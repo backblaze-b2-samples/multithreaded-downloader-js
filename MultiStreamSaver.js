@@ -1,33 +1,26 @@
-window.multiStreamSaver = (() => {
-  let secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  let multiStreamSaver = {
-    createWriteStream,
-    supported: false,
-    version: {
-      full: '1.0.0',
-      major: 1,
-      minor: 0,
-      dot: 0
+let multiStreamSaver = {
+  mitm: 'mitm.html',
+  supported: () => {
+    let result = false
+    try {
+      // Some browser has it but ain't allowed to construct a stream yet
+      result = 'serviceWorker' in navigator && !!new window.ReadableStream() && !!new window.WritableStream()
+    } catch (err) {
+      // if you are running chrome < 52 then you can enable it
+      // `chrome://flags/#enable-experimental-web-platform-features`
     }
-  }
 
-  multiStreamSaver.mitm = 'mitm.html?version=' + multiStreamSaver.version.full
+    return result
+  },
+  createWriteStream: (filename, queuingStrategy, size) => {
+    let secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
-  try {
-    // Some browser has it but ain't allowed to construct a stream yet
-    multiStreamSaver.supported = 'serviceWorker' in navigator && !!new ReadableStream() && !!new WritableStream()
-  } catch (err) {
-    // if you are running chrome < 52 then you can enable it
-    // `chrome://flags/#enable-experimental-web-platform-features`
-  }
-
-  function createWriteStream (filename, queuingStrategy, size) {
     // normalize arguments
     if (Number.isFinite(queuingStrategy)) {
       [size, queuingStrategy] = [queuingStrategy, size]
     }
 
-    let channel = new MessageChannel()
+    let channel = new window.MessageChannel()
     let setupChannel = () => new Promise((resolve, reject) => {
       channel.port1.onmessage = event => {
         if (event.data.url) {
@@ -36,9 +29,9 @@ window.multiStreamSaver = (() => {
             window.mitm.close() // don't need the mitm any longer
           }
           let link = document.createElement('a')
-          let click = new MouseEvent('click')
-          link.href = event.data.url + event.data.uniq
-          link.dispatchEvent(click)
+          let click = new window.MouseEvent('click')
+          link.href = event.data.url
+          // link.dispatchEvent(click)
         }
       }
 
@@ -87,7 +80,7 @@ window.multiStreamSaver = (() => {
       }
     })
 
-    return new WritableStream({
+    return new window.WritableStream({
       start (controller) {
         // is called immediately, and should perform any actions
         // necessary to acquire access to the underlying sink.
@@ -111,11 +104,9 @@ window.multiStreamSaver = (() => {
         channel.port1.postMessage('end')
         console.log('All data successfully read!')
       },
-      abort (e) {
+      abort () {
         channel.port1.postMessage('abort')
       }
     }, queuingStrategy)
   }
-
-  return multiStreamSaver
-})()
+}
