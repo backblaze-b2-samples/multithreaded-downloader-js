@@ -17,7 +17,7 @@ window.onmessage = event => {
 
   // Register the worker, then forward the dataChannel to the worker so they
   // can talk directly and we don't have to be "the middle man" any longer
-  navigator.serviceWorker.register('srvcwrkr.js', {scope: './'})
+  navigator.serviceWorker.register('serviceWorker.js', {scope: '/'})
   navigator.serviceWorker.ready.then(registration => {
     // This sends the message data as well as transferring messageChannel.port2
     // to the service worker. The service worker can then use the transferred
@@ -61,5 +61,5 @@ window.onmessage = event => {
 
 // The opener can't listen to onload event, so we need to help em out!
 // (telling them that we are ready to accept postMessage's)
-window.opener && window.opener.postMessage('MultiStreamSaver::mitmLoaded', '*')
+window.opener && window.opener.postMessage('mitm: loaded', '*')
 </script>
