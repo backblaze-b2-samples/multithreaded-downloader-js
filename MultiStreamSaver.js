@@ -1,8 +1,6 @@
-(() => {
-  let iframe
-  let loaded
-  let secure = location.protocol === 'https:' || location.hostname === 'localhost'
-  let streamSaver = {
+window.multiStreamSaver = (() => {
+  let secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  let multiStreamSaver = {
     createWriteStream,
     supported: false,
     version: {
@@ -13,11 +11,11 @@
     }
   }
 
-  streamSaver.mitm = '/mitm.html?version=' + streamSaver.version.full
+  multiStreamSaver.mitm = 'mitm.html?version=' + multiStreamSaver.version.full
 
   try {
     // Some browser has it but ain't allowed to construct a stream yet
-    streamSaver.supported = 'serviceWorker' in navigator && !!new ReadableStream() && !!new WritableStream()
+    multiStreamSaver.supported = 'serviceWorker' in navigator && !!new ReadableStream() && !!new WritableStream()
   } catch (err) {
     // if you are running chrome < 52 then you can enable it
     // `chrome://flags/#enable-experimental-web-platform-features`
@@ -30,52 +28,52 @@
     }
 
     let channel = new MessageChannel()
-    let mitm
     let setupChannel = () => new Promise((resolve, reject) => {
-      channel.port1.onmessage = evt => {
-        if (evt.data.download) {
+      channel.port1.onmessage = event => {
+        if (event.data.url) {
           resolve()
           if (!secure) {
-            mitm.close() // don't need the mitm any longer
+            window.mitm.close() // don't need the mitm any longer
           }
           let link = document.createElement('a')
           let click = new MouseEvent('click')
-          link.href = evt.data.download
+          link.href = event.data.url + event.data.uniq
           link.dispatchEvent(click)
         }
       }
 
-      if (secure && !iframe) {
-        iframe = document.createElement('iframe')
-        iframe.src = streamSaver.mitm
-        iframe.hidden = true
-        document.body.appendChild(iframe)
+      if (secure && !window.iframe) {
+        window.iframe = document.createElement('iframe')
+        window.iframe.src = multiStreamSaver.mitm
+        window.iframe.hidden = true
+        document.body.appendChild(window.iframe)
       }
 
-      if (secure && !loaded) {
-        let fn
-        iframe.addEventListener('load', fn = evt => {
-          loaded = true
-          iframe.removeEventListener('load', fn)
-          iframe.contentWindow.postMessage({
+      if (secure && !window.loaded) {
+        let fn = event => {
+          window.loaded = true
+          window.iframe.removeEventListener('load', fn)
+          window.iframe.contentWindow.postMessage({
             filename,
             size
           }, '*', [channel.port2])
-        })
+        }
+
+        window.iframe.addEventListener('load', fn)
       }
 
-      if (secure && loaded) {
-        iframe.contentWindow.postMessage({
+      if (secure && window.loaded) {
+        window.iframe.contentWindow.postMessage({
           filename,
           size
         }, '*', [channel.port2])
       }
 
       if (!secure) {
-        mitm = window.open(streamSaver.mitm, Math.random())
-        let onready = evt => {
-          if (evt.source === mitm) {
-            mitm.postMessage({
+        window.mitm = window.open(multiStreamSaver.mitm, Math.random())
+        let onready = event => {
+          if (event.source === window.mitm) {
+            window.mitm.postMessage({
               filename,
               size
             }, '*', [channel.port2])
@@ -84,8 +82,7 @@
         }
 
         // Another problem that cross origin don't allow is scripting
-        // so mitm.onload() don't work but postMessage still dose
-        // work cross origin
+        // so mitm.onload() doesn't work, but postMessage still does
         window.addEventListener('message', onready)
       }
     })
@@ -120,5 +117,5 @@
     }, queuingStrategy)
   }
 
-  return streamSaver
+  return multiStreamSaver
 })()

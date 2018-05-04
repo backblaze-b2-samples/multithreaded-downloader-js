@@ -1,16 +1,17 @@
-const map = new Map
+const map = new Map()
 
 // This should be called once per download
 // Each event has a dataChannel that the data will be piped through
 self.onmessage = event => {
+  let url = self.registration.scope
   // Create a uniq link for the download
-  let uniqLink = `${self.registration.scope}intercept-me-nr ${Math.random()}`
+  let uniqLink = `${url}${Math.random()}`
   let port = event.ports[0]
 
   let p = new Promise((resolve, reject) => {
     let stream = createStream(resolve, reject, port)
     map.set(uniqLink, [stream, event.data])
-    port.postMessage({download: uniqLink})
+    port.postMessage({url: url, uniq: uniqLink})
 
     // Mistage adding this and have streamsaver.js rely on it depricated as from 0.2.1
     port.postMessage({debug: ' Mocking a download request'})
@@ -60,7 +61,6 @@ function createStream (resolve, reject, port) {
 self.onfetch = event => {
   let url = event.request.url
   let hijackEvent = map.get(url)
-  map.delete(url)
 
   console.log('Handling ', url)
 
@@ -69,9 +69,9 @@ self.onfetch = event => {
   }
 
   let [stream, data] = hijackEvent
+  map.delete(url)
 
   let filename = typeof data === 'string' ? data : data.filename
-
   // Make filename RFC5987 compatible
   filename = encodeURIComponent(filename)
     .replace(/['()]/g, escape)
