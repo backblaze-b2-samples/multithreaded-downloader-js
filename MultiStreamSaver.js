@@ -1,5 +1,4 @@
 let multiStreamSaver = {
-  mitm: 'mitm.html',
   supported: () => {
     let result = false
     try {
@@ -22,6 +21,7 @@ let multiStreamSaver = {
 
     let channel = new window.MessageChannel()
     let setupChannel = () => new Promise((resolve, reject) => {
+
       channel.port1.onmessage = event => {
         if (event.data.url) {
           resolve()
@@ -35,49 +35,43 @@ let multiStreamSaver = {
         }
       }
 
-      if (secure && !window.iframe) {
+      if (!secure) {
+        console.log('Not secure!')
+        window.mitm = window.open('mitm.html', Math.random())
+        let postReadyMessage = event => {
+          if (event.source === window.mitm) {
+            // Cross origin doesn't allow scripting so .onload() won't work for the
+            // "mitm", but postMessage does
+            window.mitm.postMessage({
+              filename,
+              size
+            }, '*', [channel.port2])
+            window.removeEventListener('message', postReadyMessage)
+          }
+        }
+
+        window.addEventListener('message', postReadyMessage)
+      }
+
+      if (!window.iframe) {
+        console.log('creating mitm iframe')
         window.iframe = document.createElement('iframe')
-        window.iframe.src = multiStreamSaver.mitm
+        window.iframe.src = 'mitm.html'
         window.iframe.hidden = true
         document.body.appendChild(window.iframe)
       }
 
-      if (secure && !window.loaded) {
-        let fn = event => {
-          window.loaded = true
-          window.iframe.removeEventListener('load', fn)
-          window.iframe.contentWindow.postMessage({
-            filename,
-            size
-          }, '*', [channel.port2])
-        }
-
-        window.iframe.addEventListener('load', fn)
-      }
-
-      if (secure && window.loaded) {
+      let iframeLoaded = event => {
+        console.log('mitm iframe loaded')
+        window.iframe.removeEventListener('load', iframeLoaded)
+        console.log('postMessage from mitm iframe')
         window.iframe.contentWindow.postMessage({
           filename,
           size
         }, '*', [channel.port2])
       }
 
-      if (!secure) {
-        window.mitm = window.open(multiStreamSaver.mitm, Math.random())
-        let onready = event => {
-          if (event.source === window.mitm) {
-            window.mitm.postMessage({
-              filename,
-              size
-            }, '*', [channel.port2])
-            window.removeEventListener('message', onready)
-          }
-        }
-
-        // Another problem that cross origin don't allow is scripting
-        // so mitm.onload() doesn't work, but postMessage still does
-        window.addEventListener('message', onready)
-      }
+      window.iframe.addEventListener('load', iframeLoaded)
     })
 
     return new window.WritableStream({
