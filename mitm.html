@@ -10,21 +10,10 @@
 	to open up a link that will start the download
 -->
 <script>
-  let host = "jimmywarting.github.io"
-
-  // Service worker only works on https, 127.0.0.1 and localhost so we redirect
-  if (window.location.host == host && window.location.protocol != "https:") {
-    window.location.protocol = "https:"
-  }
-
-  // message event is the first thing we need to setup a listner for
-  // don't want the opener to do a random timeout - instead they can listen for
-  // the ready event
+  // message event is the first thing we need to setup a listner for don't want
+  // the opener to do a random timeout - instead they can listen for the ready event
   window.onmessage = event => {
-    let {
-      data,
-      ports
-    } = event
+    let { data, ports } = event
 
     // It's important to have a messageChannel, don't want to interfere
     // with other simultaneous downloads
@@ -35,7 +24,9 @@
     // Register the worker, then forward the dataChannel to the worker so they
     // can talk directly, so we don't have to be "the middle man" any longer
     navigator.serviceWorker.getRegistration('./').then(swReg => {
-      return swReg || navigator.serviceWorker.register('sw.js', { scope: './'})
+      return swReg || navigator.serviceWorker.register('srvcwrkr.js', {
+        scope: './'
+      })
     }).then(swReg => {
       // This sends the message data as well as transferring
       // messageChannel.port2 to the service worker. The service worker can

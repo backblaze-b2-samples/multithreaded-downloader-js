@@ -13,7 +13,7 @@
     }
   }
 
-  streamSaver.mitm = 'https://jimmywarting.github.io/StreamSaver.js/mitm.html?version=' + streamSaver.version.full
+  streamSaver.mitm = '/mitm.html?version=' + streamSaver.version.full
 
   try {
     // Some browser has it but ain't allowed to construct a stream yet
@@ -30,13 +30,13 @@
     }
 
     let channel = new MessageChannel()
-    let popup
+    let mitm
     let setupChannel = () => new Promise((resolve, reject) => {
       channel.port1.onmessage = evt => {
         if (evt.data.download) {
           resolve()
           if (!secure) {
-            popup.close() // don't need the popup any longer
+            mitm.close() // don't need the mitm any longer
           }
           let link = document.createElement('a')
           let click = new MouseEvent('click')
@@ -72,26 +72,26 @@
       }
 
       if (!secure) {
-        popup = window.open(streamSaver.mitm, Math.random())
+        mitm = window.open(streamSaver.mitm, Math.random())
         let onready = evt => {
-          if (evt.source === popup) {
-            popup.postMessage({
+          if (evt.source === mitm) {
+            mitm.postMessage({
               filename,
               size
             }, '*', [channel.port2])
-            removeEventListener('message', onready)
+            window.removeEventListener('message', onready)
           }
         }
 
         // Another problem that cross origin don't allow is scripting
-        // so popup.onload() don't work but postMessage still dose
+        // so mitm.onload() don't work but postMessage still dose
         // work cross origin
-        addEventListener('message', onready)
+        window.addEventListener('message', onready)
       }
     })
 
     return new WritableStream({
-      start (error) {
+      start (controller) {
         // is called immediately, and should perform any actions
         // necessary to acquire access to the underlying sink.
         // If this process is asynchronous, it can return a promise
