@@ -62,11 +62,11 @@ self.onfetch = event => {
   let url = event.request.url
   let hijackEvent = map.get(url)
 
-  console.log('Handling ', url)
-
+  console.log('handling ', url)
   if (!hijackEvent) {
     return null
   }
+
 
   let [stream, data] = hijackEvent
   map.delete(url)
