@@ -67,7 +67,6 @@ self.onfetch = event => {
     return null
   }
 
-
   let [stream, data] = hijackEvent
   map.delete(url)
 
