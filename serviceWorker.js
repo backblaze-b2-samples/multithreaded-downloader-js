@@ -3,18 +3,15 @@ const map = new Map()
 // This should be called once per download
 // Each event has a dataChannel that the data will be piped through
 self.onmessage = event => {
-  let url = self.registration.scope
+  // let url = self.registration.scope
   // Create a uniq link for the download
-  let uniqLink = `${url}${Math.random()}`
+  let uniq = Math.random()
   let port = event.ports[0]
 
   let p = new Promise((resolve, reject) => {
     let stream = createStream(resolve, reject, port)
-    map.set(uniqLink, [stream, event.data])
-    port.postMessage({url: url, uniq: uniqLink})
-
-    // Mistage adding this and have streamsaver.js rely on it depricated as from 0.2.1
-    port.postMessage({debug: ' Mocking a download request'})
+    map.set(event.data.fileName, [stream, event.data])
+    port.postMessage({fileName: event.data.fileName, uniq: uniq})
   })
 
   // Beginning in Chrome 51, event is an ExtendableMessageEvent, which supports
@@ -62,10 +59,11 @@ self.onfetch = event => {
   let url = event.request.url
   let hijackEvent = map.get(url)
 
-  console.log('handling ', url)
   if (!hijackEvent) {
+    console.log('fail')
     return null
   }
+  console.log('handling ', url)
 
   let [stream, data] = hijackEvent
   map.delete(url)
@@ -76,9 +74,11 @@ self.onfetch = event => {
     .replace(/['()]/g, escape)
     .replace(/\*/g, '%2A')
 
+  let contentLength = 10240
   let headers = {
     'Content-Type': 'application/octet-stream; charset=utf-8',
     'Content-Disposition': "attachment; filename*=UTF-8''" + filename
+    // 'Range': `bytes=1024-2047/${contentLength}`
   }
 
   if (data.size) {

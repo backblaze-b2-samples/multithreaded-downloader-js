@@ -61,5 +61,5 @@ window.onmessage = event => {
 
 // The opener can't listen to onload event, so we need to help em out!
 // (telling them that we are ready to accept postMessage's)
-window.opener && window.opener.postMessage('mitm: loaded', '*')
+window.opener && window.opener.postMessage('mitm::loaded', '*')
 </script>

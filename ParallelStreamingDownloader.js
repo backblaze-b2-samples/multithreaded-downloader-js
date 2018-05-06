@@ -1,7 +1,6 @@
 class ParallelStreamingDownloader {
-  constructor () {
-    this.secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  }
+  // constructor () {
+  // }
 
   supported () {
     try {
@@ -21,17 +20,17 @@ class ParallelStreamingDownloader {
     }
 
     this.fileName = fileName
-    this.queuingStrategy = queuingStrategy
     this.fileSize = fileSize
-    this.setupMessageChannel()
+    this.queuingStrategy = queuingStrategy
 
+    const that = this
     return new window.WritableStream({
       start (controller) {
         // is called immediately, and should perform any actions
         // necessary to acquire access to the underlying sink.
         // If this process is asynchronous, it can return a promise
         // to signal success or failure.
-        return this.messageChannelSetupPromise
+        return that.setupMessageChannel()
       },
       write (chunk) {
         // is called when a new chunk of data is ready to be written
@@ -43,71 +42,90 @@ class ParallelStreamingDownloader {
 
         // TODO: Kind of important that service worker respond back when
         // it has been written. Otherwise we can't handle backpressure
-        this.messageChannel.port1.postMessage(chunk)
+        that.messageChannel.port1.postMessage(chunk)
       },
       close () {
-        this.messageChannel.port1.postMessage('end')
-        console.log('All data successfully read!')
+        that.messageChannel.port1.postMessage('end')
+        console.log('All data successfully written!')
       },
       abort () {
-        this.messageChannel.port1.postMessage('abort')
+        that.messageChannel.port1.postMessage('abort')
       }
     }, queuingStrategy)
   }
 
   setupMessageChannel () {
+    let secure =
+      window.location.protocol === 'https:' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+
     this.messageChannel = new window.MessageChannel()
-    this.messageChannelSetupPromise = () => new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
+      console.log('messageChannelSetupPromise starting')
+
       this.messageChannel.port1.onmessage = event => {
-        if (event.data.url) {
+        if (event.data.fileName) {
+          console.log(event)
           resolve()
-          if (!this.secure) {
+          if (!secure) {
             this.mitm.close() // don't need the mitm any longer
           }
-          // let link = document.createElement('a')
-          // let click = new window.MouseEvent('click')
-          // link.href = event.data.url
+          let link = document.createElement('a')
+          let click = new window.MouseEvent('click')
+          link.innerText = 'link'
+          link.href = event.data.fileName
+          document.body.appendChild(link)
           // link.dispatchEvent(click)
         }
       }
 
-      if (!this.secure) {
-        console.log('not secure!')
+      if (!secure) {
+        console.log('not secure, opening mitm in new window!')
         this.mitm = window.open('mitm.html', Math.random())
-      }
-
-      if (!this.mitm) {
-        console.log('creating mitm')
+        window.addEventListener('message', this._mitmMessage)
+      } else {
+        console.log('mitm created')
         this.mitm = document.createElement('iframe')
         this.mitm.src = 'mitm.html'
         this.mitm.hidden = true
+        this.mitm.fileName = this.fileName
+        this.mitm.fileSize = this.fileSize
+        this.mitm.messageChannelPort = this.messageChannel.port2
+        this.mitm.addEventListener('load', this._mitmLoaded)
         document.body.appendChild(this.mitm)
-      }
 
-      this.mitm.addEventListener('load', this._mitmLoaded)
-      window.addEventListener('message', this._mitmReady)
+        // this.mitmPostMessage(this.fileName, this.fileSize)
+        // window.addEventListener('message', this._mitmMessage)
+      }
     })
   }
 
   _mitmLoaded (event) {
     console.log('mitm loaded')
-    this.mitm.removeEventListener('load', this._mitmLoaded)
-    this._mitmPostMessage(this.fileName, this.fileSize).bind(this)
+    this.contentWindow.postMessage({
+      fileName: this.fileName,
+      fileSize: this.fileSize
+    }, '*', [this.messageChannelPort])
+    // this.mitm.removeEventListener('load', this._mitmLoaded)
   }
 
-  _mitmReady (event) {
-    if (event.source === this.mitm) {
-      // Cross origin doesn't allow scripting so .onload() won't work for the
-      // "mitm", but postMessage does
-      window.removeEventListener('message', this._mitmReady)
-      this._mitmPostMessage(this.fileName, this.fileSize).bind(this)
-    }
-  }
+  // _mitmMessage (event) {
+  //   console.log(this)
+  //   console.log('mitm ready', this.mitm)
+  //   if (event.source === this.mitm) {
+  //     // Cross origin doesn't allow scripting so .onload() won't work for the
+  //     // "mitm", but postMessage does
+  //     this.mitmPostMessage(this.fileName, this.fileSize)
+  //     window.removeEventListener('message', this._mitmMessage)
+  //   }
+  // }
 
-  _mitmPostMessage (fileName, fileSize) {
-    this.mitm.contentWindow.postMessage({
-      fileName,
-      fileSize
-    }, '*', [this.messageChannel.port2])
-  }
+  // mitmPostMessage (fileName, fileSize) {
+  //   console.log(`mitm postMessage: ${this.fileName}`, this)
+  //   this.mitm.contentWindow.postMessage({
+  //     fileName,
+  //     fileSize
+  //   }, '*', [this.messageChannel.port2])
+  // }
 }
