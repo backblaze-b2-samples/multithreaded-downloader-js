@@ -71,11 +71,11 @@ class ParallelStreamingDownloader {
           if (!secure) {
             this.mitm.close() // don't need the mitm any longer
           }
-          let link = document.createElement('a')
-          let click = new window.MouseEvent('click')
-          link.innerText = 'link'
-          link.href = event.data.fileName
-          document.body.appendChild(link)
+          // let link = document.createElement('a')
+          // let click = new window.MouseEvent('click')
+          // link.innerText = 'link'
+          // link.href = event.data.fileName
+          // document.body.appendChild(link)
           // link.dispatchEvent(click)
         }
       }
