@@ -1,31 +1,3 @@
-const map = new Map()
-
-// This should be called once per download
-// Each event has a dataChannel that the data will be piped through
-self.onmessage = event => {
-  console.log(event.data.fileName + ' added to set')
-  // let url = self.registration.scope
-  // Create a uniq link for the download
-  let uniq = Math.random()
-  let port = event.ports[0]
-  let p = new Promise((resolve, reject) => {
-    let stream = createStream(resolve, reject, port)
-    map.set(event.data.fileName, [stream, event.data])
-    port.postMessage({fileName: event.data.fileName, uniq: uniq})
-  })
-
-  // Beginning in Chrome 51, event is an ExtendableMessageEvent, which supports
-  // the waitUntil() method for extending the lifetime of the event handler
-  // until the promise is resolved.
-  if ('waitUntil' in event) {
-    event.waitUntil(p)
-  }
-
-  // Without support for waitUntil(), there's a chance that if the promise chain
-  // takes "too long" to execute, the service worker might be automatically
-  // stopped before it's complete.
-}
-
 function createStream (resolve, reject, port) {
   // ReadableStream is only supported by chrome 52
   let bytesWritten = 0
@@ -78,7 +50,6 @@ function onHeadResponse (request, response) {
     // headers.append('Range', `bytes=${i * CHUNK_SIZE}-${ (i * CHUNK_SIZE) + CHUNK_SIZE - 1}/${contentLength}`)
     headers.append('Range', `bytes=${i * CHUNK_SIZE}-${ (i * CHUNK_SIZE) + CHUNK_SIZE - 1}`)
 
-    // console.log(`Range header: ${headers.get('Range')}`)
     return fetch(request, {method: 'GET', headers})
   })
 
@@ -97,8 +68,8 @@ self.onfetch = event => {
   // }
   if (url.searchParams.get('intercept')) {
     url.searchParams.delete('intercept')
-    console.log('intercept', url)
     event.request.url = url.href
+    console.log('intercepted', url.href)
     return event.respondWith(fetch(event.request, {method: 'HEAD'}).then(onHeadResponse.bind(this, event.request)))
   }
 

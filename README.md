@@ -12,4 +12,4 @@ Goals of this project are:
 * This project shall allow for resuming an interrupted download, or at least retrying a part of the file that was interrupted.
 * Optionally, this project will allow us to specify the number of download threads and the size of each request... so we can tune it for specific network conditions, if that is necessary.
 
-![ParallelStreamingDownloader](ParallelDownload.gif)
+![MultiThreadedDownloader](MultiThreadedDownload.gif)

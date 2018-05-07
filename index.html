@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Parallel Chunk Streaming Downloader</title>
+  <title>Multi Threaded Downloader</title>
 </head>
 
 <body>
@@ -15,25 +15,36 @@
     </svg>
     <style>.github-corner:hover .octo-arm{animation: octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%, 100%{transform: rotate(0)}20%, 60%{transform: rotate(-25deg)}40%, 80%{transform: rotate(10deg)}}@media (max-width: 500px){.github-corner:hover .octo-arm{animation: none}.github-corner .octo-arm{animation: octocat-wave 560ms ease-in-out}.github-corner-text{display: none;}.github-corner svg{height: 50px; width: 50px;}}</style>
   </a>
-
-  <h1>Parallel Chunk Streaming Downloader</h1>
+  <h1>Multi Threaded Downloader</h1>
+  <h2>Parallel Chunk Streaming</h2>
   <ul>
+    <li>100% client side JavaScript (No proxy required)</li>
+    <li>Specify the number of chunks to split download requests into</li>
+    <li>Resume or retry an interrupted download.</li>
     <li>Saving a stream directly to the filesystem</li>
   </ul>
-  <p>Google Drive API</p>
-
+  <h2>Demo</h2>
+  <h3>BackBlaze API</h3>
+  <select id="B2FileList" name="B2FileList">
+    <option>Select a file.</option>
+    <option value="https://f000.backblazeb2.com/file/nilayp/uploads-small.tar.gz">uploads-small.tar.gz</option>
+    <option value="https://f000.backblazeb2.com/file/nilayp/uploads-smallmedium.tar.gz">uploads-smallmedium.tar.gz</option>
+    <option value="https://f000.backblazeb2.com/file/nilayp/5GB.txt">5GB.txt</option>
+  </select>
+  <h3>Google Drive API</h3>
   <!--Add buttons to initiate auth sequence and sign out-->
   <button id="signin-button" style="display: none;">Sign In</button>
   <button id="signout-button" style="display: none;">Sign Out</button>
-
-  <pre id="content"></pre>
-  <select id="fileList" name="fileList"></select>
+  <br/>
+  <select id="GDFileList" name="GDFileList">
+    <option>Select a file.</option>
+  </select>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="ParallelStreamingDownloader.js"></script>
+  <script defer src="multiThreadedDownloader.js"></script>
   <script defer src="googleDrive.js"></script>
-  <!-- <script defer src="backBlaze.js"></script> -->
-
+  <script defer src="backBlaze.js"></script>
+  <script defer src="index.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()">
