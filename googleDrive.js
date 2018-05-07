@@ -94,23 +94,30 @@
     // Add "intercept=true" parameter so service worker can intercept request
     window.fetch(`https://www.googleapis.com/drive/v3/files/${fileID}?alt=media&intercept=true`, {
       headers: new window.Headers({'Authorization': `Bearer ${accessToken}`})
-    }).then(res => res.body).then(body => {
-      let fileStream = mtd.createWriteStream(`${fileName}.txt`)
-
-      // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/pipeTo
-      let reader = body.getReader()
-      // body.pipeTo(fileStream)
-
-      // https://jakearchibald.com/2016/streams-ftw/ - The body is a stream :)
-      let writer = fileStream.getWriter()
-
-      // Write one chunk and get the next one OR stop writing and close the stream
-      let pump = () => reader.read().then(
-        res => !res.done
-          ? writer.write(res.value).then(pump)
-          : writer.close())
-
-      pump()
-    })
+    }).then(res => res.blob())
+      .then(blob => {
+        // let fileStream = mtd.createWriteStream(`${fileName}.txt`)
+        //
+        // // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/pipeTo
+        // let reader = body.getReader()
+        // // body.pipeTo(fileStream)
+        //
+        // // https://jakearchibald.com/2016/streams-ftw/ - The body is a stream :)
+        // let writer = fileStream.getWriter()
+        //
+        // // Write one chunk and get the next one OR stop writing and close the stream
+        // let pump = () => reader.read().then(
+        //   res => !res.done
+        //     ? writer.write(res.value).then(pump)
+        //     : writer.close())
+        //
+        // pump()
+        let click = new MouseEvent('click')
+        let link = document.createElement('a')
+        // link.innerText = fileName
+        link.href = URL.createObjectURL(blob)
+        link.download = fileName
+        link.dispatchEvent(click)
+      })
   }
 })()
