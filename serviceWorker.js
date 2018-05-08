@@ -45,27 +45,17 @@ function concatArrayBuffer (ab1, ab2) {
 function onHeadResponse (request, response) {
   const contentLength = response.headers.get('content-length')
   const chunkSize = Math.ceil(contentLength / numThreads)
+  const numChunks = Math.ceil(contentLength / chunkSize)
 
-  let promises = new Array(Math.ceil(contentLength / chunkSize)).map((_, index) => {
+  let promises = []
+  console.log(request)
+  for (let i = 0; i < numChunks; i++) {
     const headers = new Headers(request.headers)
     headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
-    headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}/${contentLength}`)
-
-    return fetch(request, {headers: headers, method: 'GET', mode: 'cors'})
-    // return fetch(request, {headers: headers, method: 'GET', mode: request.mode})
-  })
-  // const promises = Array.from({
-  //   length: Math.ceil(contentLength / chunkSize)
-  // }).map((_, i) => {
-  //   const headers = new Headers(request.headers)
-  //   headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
-  //   // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
-  //   headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}`)
-  //
-  //   return fetch(request, {headers: headers, method: 'GET', mode: 'cors'})
-  //   // return fetch(request, {headers: headers, method: 'GET', mode: request.mode})
-  // })
+    headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}`)
+    promises.push(fetch(request, {headers: headers, method: 'GET', mode: request.mode}))
+  }
 
   return Promise.all(promises)
     .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
