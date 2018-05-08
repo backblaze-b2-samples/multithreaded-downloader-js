@@ -17,7 +17,7 @@
     let fileStream = mtd.createWriteStream(fileName)
 
     // Add "intercept=true" parameter so service worker can intercept request
-    window.fetch(`${url}?intercept=true`)
+    fetch(`${url}?intercept=true`, {mode: 'cors'})
       .then(response => response.body)
       .then(body => {
         console.log(body)

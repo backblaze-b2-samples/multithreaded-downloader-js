@@ -86,6 +86,7 @@
     fileList.appendChild(option)
   }
 
+  // https://developers.google.com/drive/v3/web/manage-downloads
   function downloadFile (fileID, fileName) {
     // https://developers.google.com/api-client-library/javascript/features/cors
     let user = gapi.auth2.getAuthInstance().currentUser.get()
