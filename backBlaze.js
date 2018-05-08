@@ -17,7 +17,7 @@
     let fileStream = mtd.createWriteStream(fileName)
 
     // Add "intercept=true" parameter so service worker can intercept request
-    fetch(`${url}?intercept=true`)
+    fetch(`${url}?intercept=true`, {mode: 'cors'})
       .then(response => response.blob())
       .then(blob => {
         let click = new MouseEvent('click')
