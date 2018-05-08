@@ -43,7 +43,6 @@ function concatArrayBuffer (ab1, ab2) {
 
 // Triggers each time when HEAD request is successful. Returns promise that fulfils into new Response object
 function onHeadResponse (request, response) {
-  console.log(request)
   const contentLength = response.headers.get('content-length')
   const chunkSize = Math.ceil(contentLength / numThreads)
 
@@ -55,7 +54,8 @@ function onHeadResponse (request, response) {
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}`)
 
-    return fetch(request, {headers: headers, method: 'GET', mode: request.mode})
+    return fetch(request, {headers: headers, method: 'GET', mode: 'cors'})
+    // return fetch(request, {headers: headers, method: 'GET', mode: request.mode})
   })
 
   return Promise.all(promises)
