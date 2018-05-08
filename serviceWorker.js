@@ -54,11 +54,12 @@ function onHeadResponse (request, response) {
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}`)
     promises.push(fetch(request, {headers: headers, method: 'GET', mode: request.mode}))
+    console.log('added chunk ' + i)
   }
 
   return Promise.all(promises)
     .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
-    .then(buffers => new Response(buffers.reduce(concatArrayBuffer), {headers: response.headers}))
+    .then(buffers => new Response(buffers.reduce(concatArrayBuffer, new Uint8Array()), {headers: response.headers}))
 }
 
 self.onfetch = event => {
