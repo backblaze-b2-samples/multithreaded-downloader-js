@@ -47,7 +47,7 @@ function onHeadResponse (request, response) {
   const contentLength = response.headers.get('Content-Length') || response.headers.get('content-length')
   const chunkSize = Math.ceil(contentLength / numThreads)
   const numChunks = Math.ceil(contentLength / chunkSize)
-console.log(contentLength, chunkSize, numChunks, response)
+console.log(contentLength, chunkSize, numChunks, response.headers.get())
   let promises = []
   for (let i = 0; i < numChunks; i++) {
     const headers = new Headers(request.headers)
