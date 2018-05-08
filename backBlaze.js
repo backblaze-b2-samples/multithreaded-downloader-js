@@ -17,10 +17,14 @@
     let fileStream = mtd.createWriteStream(fileName)
 
     // Add "intercept=true" parameter so service worker can intercept request
-    fetch(`${url}?intercept=true`, {mode: 'cors'})
-      .then(response => response.body)
-      .then(body => {
-        console.log(body)
+    fetch(`${url}?intercept=true`)
+      .then(response => response.blob())
+      .then(blob => {
+        let click = new MouseEvent('click')
+        let link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = fileName
+        link.dispatchEvent(click)
         // body.pipeTo(fileStream)
       })
     // .then(blob => {

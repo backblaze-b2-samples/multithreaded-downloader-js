@@ -95,7 +95,7 @@
     // Add "intercept=true" parameter so service worker can intercept request
     window.fetch(`https://www.googleapis.com/drive/v3/files/${fileID}?alt=media&intercept=true`, {
       headers: new window.Headers({'Authorization': `Bearer ${accessToken}`})
-    }).then(res => res.blob())
+    }).then(response => response.blob())
       .then(blob => {
         // let fileStream = mtd.createWriteStream(`${fileName}.txt`)
         //
@@ -115,7 +115,6 @@
         // pump()
         let click = new MouseEvent('click')
         let link = document.createElement('a')
-        // link.innerText = fileName
         link.href = URL.createObjectURL(blob)
         link.download = fileName
         link.dispatchEvent(click)

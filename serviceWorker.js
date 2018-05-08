@@ -56,7 +56,6 @@ function onHeadResponse (request, response) {
     promises.push(fetch(request, {headers: headers, method: 'GET', mode: request.mode}))
   }
 
-  console.log(request, promises)
   return Promise.all(promises)
     .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
     .then(buffers => new Response(buffers.reduce(concatArrayBuffer), {headers: response.headers}))
@@ -66,9 +65,8 @@ self.onfetch = event => {
   let url = new URL(event.request.url)
 
   if (url.searchParams.get('intercept')) {
-    console.log('intercepted', url.href)
-
     url.searchParams.delete('intercept')
+    console.log('intercepted', url.href)
     let req = new Request(url.href, {headers: event.request.headers, method: 'HEAD', mode: event.request.mode})
 
     // let headers = {
