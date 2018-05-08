@@ -43,7 +43,8 @@ function concatArrayBuffer (ab1, ab2) {
 
 // Triggers each time when HEAD request is successful. Returns promise that fulfils into new Response object
 function onHeadResponse (request, response) {
-  const contentLength = response.headers.get('content-length')
+  // Google drive response headers are all lower case, B2 is not!!!
+  const contentLength = response.headers.get('content-length') || response.headers.get('Content-Length')
   const chunkSize = Math.ceil(contentLength / numThreads)
   const numChunks = Math.ceil(contentLength / chunkSize)
 console.log(contentLength, chunkSize, numChunks)
