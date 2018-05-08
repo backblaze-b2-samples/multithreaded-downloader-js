@@ -44,7 +44,8 @@
   <script defer src="multiThreadedDownloader.js"></script>
   <script defer src="googleDrive.js"></script>
   <script defer src="backBlaze.js"></script>
-  <script defer src="index.js"></script>
+  <script defer>navigator.serviceWorker.register('serviceWorker.js', {scope: location.href})</script>
+
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()">
