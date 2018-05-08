@@ -47,15 +47,20 @@ function onHeadResponse (request, response) {
   const contentLength = response.headers.get('Content-Length') || response.headers.get('content-length')
   const chunkSize = Math.ceil(contentLength / numThreads)
   const numChunks = Math.ceil(contentLength / chunkSize)
-console.log(contentLength, chunkSize, numChunks, response.headers.get())
+
+  // content-length header is not accessible from CORS without
+  // "Access-Control-Expose-Headers: Content-Length" enabled from the server
+  // https://stackoverflow.com/questions/48266678/how-to-get-the-content-length-of-the-response-from-a-request-with-fetch
+  console.log(contentLength, chunkSize, numChunks)
+
   let promises = []
   for (let i = 0; i < numChunks; i++) {
     const headers = new Headers(request.headers)
     // headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
-    console.log('added chunk ' + i, headers)
     promises.push(fetch(request.url, {headers: headers, method: 'GET'}))
+    console.log('added chunk ' + i)
   }
 
   return Promise.all(promises)
