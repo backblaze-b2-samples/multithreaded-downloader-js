@@ -27,9 +27,11 @@ function createStream (resolve, reject, port) {
   })
 }
 
+// https://blog.ghaiklor.com/parallel-chunk-requests-in-a-browser-via-service-workers-7be10be2b75f
+
 // Size of one chunk when requesting with Range
-let CHUNK_SIZE = 5120000
-let NUM_CHUNKS = 8
+// let chunkSize = 5120000
+let numThreads = 8
 
 // Concat two ArrayBuffers
 function concatArrayBuffer (ab1, ab2) {
@@ -41,16 +43,19 @@ function concatArrayBuffer (ab1, ab2) {
 
 // Triggers each time when HEAD request is successful. Returns promise that fulfils into new Response object
 function onHeadResponse (request, response) {
+  console.log(request)
   const contentLength = response.headers.get('content-length')
-  CHUNK_SIZE = Math.ceil(contentLength / NUM_CHUNKS)
+  const chunkSize = Math.ceil(contentLength / numThreads)
+
   const promises = Array.from({
-    length: Math.ceil(contentLength / CHUNK_SIZE)
+    length: Math.ceil(contentLength / chunkSize)
   }).map((_, i) => {
     const headers = new Headers(request.headers)
-    // headers.append('Range', `bytes=${i * CHUNK_SIZE}-${ (i * CHUNK_SIZE) + CHUNK_SIZE - 1}/${contentLength}`)
-    headers.append('Range', `bytes=${i * CHUNK_SIZE}-${ (i * CHUNK_SIZE) + CHUNK_SIZE - 1}`)
+    headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
+    // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
+    headers.append('Range', `bytes=${i * chunkSize}-${ (i * chunkSize) + chunkSize - 1}`)
 
-    return fetch(request, {method: 'GET', headers})
+    return fetch(request, {headers: headers, method: 'GET', mode: request.mode})
   })
 
   return Promise.all(promises)
@@ -60,38 +65,26 @@ function onHeadResponse (request, response) {
 
 self.onfetch = event => {
   let url = new URL(event.request.url)
-  // let hijackEvent = map.get(url)
 
-  // if (!hijackEvent) {
-  //   console.log(url + ' not found')
-  //   return null
-  // }
   if (url.searchParams.get('intercept')) {
-    url.searchParams.delete('intercept')
-    event.request.url = url.href
     console.log('intercepted', url.href)
-    return event.respondWith(fetch(event.request, {method: 'HEAD'}).then(onHeadResponse.bind(this, event.request)))
-  }
 
-  // let [stream, data] = hijackEvent
-  // map.delete(url)
-  //
-  // let filename = typeof data === 'string' ? data : data.filename
-  // // Make filename RFC5987 compatible
-  // filename = encodeURIComponent(filename)
-  //   .replace(/['()]/g, escape)
-  //   .replace(/\*/g, '%2A')
-  //
-  // let headers = {
-  //   'Content-Type': 'application/octet-stream; charset=utf-8',
-  //   'Content-Disposition': "attachment; filename*=UTF-8''" + filename
-  // }
-  //
-  // if (data.size) {
-  //   headers['Content-Length'] = data.size
-  // }
-  //
-  // event.respondWith(new Response(stream, {headers}))
+    url.searchParams.delete('intercept')
+    let req = new Request(url.href, {headers: event.request.headers, method: 'HEAD', mode: event.request.mode})
+
+    // let headers = {
+    //   'Content-Type': 'application/octet-stream; charset=utf-8',
+    //   'Content-Disposition': "attachment; filename*=UTF-8''" + filename
+    // }
+    //
+    // if (data.size) {
+    //   headers['Content-Length'] = data.size
+    // }
+    //
+    // event.respondWith(new Response(stream, {headers}))
+
+    return event.respondWith(fetch(req).then(onHeadResponse.bind(this, req)))
+  }
 
   if (event.request.mode === 'navigate') {
     return event.respondWith(fetch(event.request))
@@ -100,6 +93,4 @@ self.onfetch = event => {
   if (url.origin === location.origin) {
     return event.respondWith(fetch(event.request, {mode: 'same-origin'}))
   }
-
-  // return event.respondWith(fetch(event.request))
 }
