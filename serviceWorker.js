@@ -48,7 +48,6 @@ function onHeadResponse (request, response) {
   const numChunks = Math.ceil(contentLength / chunkSize)
 
   let promises = []
-  console.log(request)
   for (let i = 0; i < numChunks; i++) {
     const headers = new Headers(request.headers)
     headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
@@ -57,6 +56,7 @@ function onHeadResponse (request, response) {
     promises.push(fetch(request, {headers: headers, method: 'GET', mode: request.mode}))
   }
 
+  console.log(request, promises)
   return Promise.all(promises)
     .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
     .then(buffers => new Response(buffers.reduce(concatArrayBuffer), {headers: response.headers}))
