@@ -7,21 +7,19 @@
   const accountID = 'e949706fe14a'
   const applicationKey = '00262a1255b8e8250477967f6a253edd25c9f042ce'
   const credentials = window.btoa(`${accountID}:${applicationKey}`)
-  const hostName = 'https://api002.backblazeb2.com'
+  const apiUrl = 'https://api002.backblazeb2.com'
 
-  window.fetch(`${hostName}/b2api/v1/b2_authorize_account`, {
-    method: 'POST',
+  window.fetch(`${apiUrl}/b2api/v1/b2_authorize_account`, {
+    method: 'GET',
     headers: {
       'Authorization': `Basic ${credentials}`
     },
+    mode: 'cors',
     credentials: 'include'
   }).then(response => response.json())
     .then(json => {
       console.log(json)
-      // From the b2b2_authorize_account call
-      // const accountAuthToken = ''
-      // const bucketName = '' // 50 char max: letters, digits, '-' and '_'
-      // const bucketType = 'allPublic' // Either 'allPublic' or 'allPrivate'
+      // const authorizationToken = json.authorizationToken
     })
 
   let fileList = document.getElementById('B2FileList')
