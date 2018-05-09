@@ -10,6 +10,12 @@
   const downloadKey = '3_20180509062706_bb6088159451eb57b33c51c4_799b49c13526c2c0bf2f9dec00a174d4ba762712_002_20180510062706_0013_dnld'
   const downloadUrl = 'https://f002.backblazeb2.com'
 
+  let req = new XMLHttpRequest()
+  req.addEventListener('load', event => console.log(event))
+  req.open('GET', `${apiUrl}/b2api/v1/b2_authorize_account`)
+  req.setRequestHeader('Authorization', `Basic ${credentials}`)
+  req.withCredentials = true
+  req.send()
   // window.fetch(`${apiUrl}/b2api/v1/b2_authorize_account`, {
   //   method: 'GET',
   //   headers: {
@@ -34,24 +40,27 @@
   function downloadFile (fileName) {
     // let fileStream = mtd.createWriteStream(fileName)
 
-
+    let req = new XMLHttpRequest()
+    req.addEventListener('load', () => { console.log(this) })
+    req.open('GET', `${downloadUrl}/file/BarFoo/${fileName}`)
+    req.send()
     // Add "intercept=true" parameter so service worker can intercept request
-    fetch(`${downloadUrl}/file/BarFoo/${fileName}?intercept=true`, {
-      method: 'GET',
-      headers: {
-        'Authorization': downloadKey
-      },
-      mode: 'cors',
-      credentials: 'include'
-    }).then(response => response.blob())
-      .then(blob => {
-        let click = new MouseEvent('click')
-        let link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = fileName
-        link.dispatchEvent(click)
-        // body.pipeTo(fileStream)
-      })
+    // fetch(`${downloadUrl}/file/BarFoo/${fileName}?intercept=true`, {
+    //   method: 'GET',
+    //   headers: {
+    //     'Authorization': downloadKey
+    //   },
+    //   mode: 'no-cors',
+    //   credentials: 'include'
+    // }).then(response => response.blob())
+    //   .then(blob => {
+    //     let click = new MouseEvent('click')
+    //     let link = document.createElement('a')
+    //     link.href = URL.createObjectURL(blob)
+    //     link.download = fileName
+    //     link.dispatchEvent(click)
+    //     // body.pipeTo(fileStream)
+    //   })
     // .then(blob => {
     //   let fileStream = multiStreamSaver.createWriteStream(fileName)
     //
