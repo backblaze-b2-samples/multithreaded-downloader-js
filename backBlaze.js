@@ -7,13 +7,14 @@
   const accountID = 'e949706fe14a'
   const applicationKey = '00262a1255b8e8250477967f6a253edd25c9f042ce'
   const credentials = window.btoa(`${accountID}:${applicationKey}`)
-  const apiURL = 'https://api002.backblazeb2.com'
+  const hostName = 'https://api002.backblazeb2.com'
 
-  window.fetch(`${apiURL}/b2api/v1/b2_authorize_account`, {
+  window.fetch(`${hostName}/b2api/v1/b2_authorize_account`, {
     method: 'POST',
     headers: {
       'Authorization': `Basic ${credentials}`
-    }
+    },
+    credentials: 'include'
   }).then(response => response.json())
     .then(json => {
       console.log(json)
