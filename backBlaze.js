@@ -16,11 +16,10 @@
     },
     mode: 'cors',
     credentials: 'include'
-  }).then(response => response.json())
-    .then(json => {
-      console.log(json)
-      // const authorizationToken = json.authorizationToken
-    })
+  }).then(response => {
+    console.log(response)
+    // const authorizationToken = json.authorizationToken
+  })
 
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
