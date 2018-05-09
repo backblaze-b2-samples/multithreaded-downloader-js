@@ -3,40 +3,47 @@
 
   !mtd.supported() && console.error('Either ReadableStream or WritableStream is not supported!')
 
-  // From your B2 account page
   const accountID = 'e949706fe14a'
+  const apiUrl = 'https://api002.backblazeb2.com'
   const applicationKey = '00262a1255b8e8250477967f6a253edd25c9f042ce'
   const credentials = window.btoa(`${accountID}:${applicationKey}`)
-  const apiUrl = 'https://api002.backblazeb2.com'
+  const downloadKey = '3_20180509062706_bb6088159451eb57b33c51c4_799b49c13526c2c0bf2f9dec00a174d4ba762712_002_20180510062706_0013_dnld'
+  const downloadUrl = 'https://f002.backblazeb2.com'
 
-  window.fetch(`${apiUrl}/b2api/v1/b2_authorize_account`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${credentials}`
-    },
-    mode: 'cors',
-    credentials: 'include'
-  }).then(response => {
-    console.log(response)
-    // const authorizationToken = json.authorizationToken
-  })
+  // window.fetch(`${apiUrl}/b2api/v1/b2_authorize_account`, {
+  //   method: 'GET',
+  //   headers: {
+  //     'Authorization': `Basic ${credentials}`
+  //   },
+  //   mode: 'cors',
+  //   credentials: 'include'
+  // }).then(response => {
+  //   console.log(response)
+  //   // const authorizationToken = json.authorizationToken
+  // })
 
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
     let index = event.target.options.selectedIndex
-    let url = event.target.options[index].value
-    let fileName = event.target.options[index].innerText
+    let fileName = event.target.options[index].value
     if (index > 0) {
-      downloadFile(url, fileName)
+      downloadFile(fileName)
     }
   }
 
-  function downloadFile (url, fileName) {
-    let fileStream = mtd.createWriteStream(fileName)
+  function downloadFile (fileName) {
+    // let fileStream = mtd.createWriteStream(fileName)
+
 
     // Add "intercept=true" parameter so service worker can intercept request
-    fetch(`${url}?intercept=true`, {mode: 'cors'})
-      .then(response => response.blob())
+    fetch(`${downloadUrl}/file/BarFoo/${fileName}?intercept=true`, {
+      method: 'GET',
+      headers: {
+        'Authorization': downloadKey
+      },
+      mode: 'cors',
+      credentials: 'include'
+    }).then(response => response.blob())
       .then(blob => {
         let click = new MouseEvent('click')
         let link = document.createElement('a')
