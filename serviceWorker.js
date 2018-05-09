@@ -59,7 +59,7 @@ function onHeadResponse (request, response) {
     // headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
-    promises.push(fetch(request.url, {headers: headers, method: 'GET'}))
+    promises.push(fetch(request.url, {headers: headers, method: 'GET', mode: 'cors'}))
     console.log('added chunk ' + i)
   }
 

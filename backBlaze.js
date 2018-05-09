@@ -3,6 +3,26 @@
 
   !mtd.supported() && console.error('Either ReadableStream or WritableStream is not supported!')
 
+  // From your B2 account page
+  const accountID = 'e949706fe14a'
+  const applicationKey = '00262a1255b8e8250477967f6a253edd25c9f042ce'
+  const credentials = window.btoa(`${accountID}:${applicationKey}`)
+  const apiURL = 'https://api002.backblazeb2.com'
+
+  window.fetch(`${apiURL}/b2api/v1/b2_authorize_account`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`
+    }
+  }).then(response => response.json())
+    .then(json => {
+      console.log(json)
+      // From the b2b2_authorize_account call
+      // const accountAuthToken = ''
+      // const bucketName = '' // 50 char max: letters, digits, '-' and '_'
+      // const bucketType = 'allPublic' // Either 'allPublic' or 'allPrivate'
+    })
+
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
     let index = event.target.options.selectedIndex
