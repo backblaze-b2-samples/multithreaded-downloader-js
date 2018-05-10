@@ -3,30 +3,11 @@
 
   !mtd.supported() && console.error('Either ReadableStream or WritableStream is not supported!')
 
-  const accountID = 'e949706fe14a'
-  const apiUrl = 'https://api002.backblazeb2.com'
-  const applicationKey = '00262a1255b8e8250477967f6a253edd25c9f042ce'
-  const credentials = window.btoa(`${accountID}:${applicationKey}`)
-  const downloadKey = '3_20180509062706_bb6088159451eb57b33c51c4_799b49c13526c2c0bf2f9dec00a174d4ba762712_002_20180510062706_0013_dnld'
-  const downloadUrl = 'https://f002.backblazeb2.com'
-
-  let req = new XMLHttpRequest()
-  req.addEventListener('load', event => console.log(event))
-  req.open('GET', `${apiUrl}/b2api/v1/b2_authorize_account`)
-  req.setRequestHeader('Authorization', `Basic ${credentials}`)
-  req.withCredentials = true
-  req.send()
-  // window.fetch(`${apiUrl}/b2api/v1/b2_authorize_account`, {
-  //   method: 'GET',
-  //   headers: {
-  //     'Authorization': `Basic ${credentials}`
-  //   },
-  //   mode: 'cors',
-  //   credentials: 'include'
-  // }).then(response => {
-  //   console.log(response)
-  //   // const authorizationToken = json.authorizationToken
-  // })
+  // const accountID = 'e949706fe14a'
+  // const apiUrl = 'https://api002.backblazeb2.com'
+  // const applicationKey = '002370c2f2ad311d2bd2a189368f58354dd2495e19'
+  // const credentials = window.btoa(`${accountID}:${applicationKey}`)
+  // const downloadKey = '3_20180509062706_bb6088159451eb57b33c51c4_799b49c13526c2c0bf2f9dec00a174d4ba762712_002_20180510062706_0013_dnld'
 
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
@@ -37,49 +18,20 @@
     }
   }
 
-  function downloadFile (fileName) {
-    // let fileStream = mtd.createWriteStream(fileName)
-
-    let req = new XMLHttpRequest()
-    req.addEventListener('load', () => { console.log(this) })
-    req.open('GET', `${downloadUrl}/file/BarFoo/${fileName}`)
-    req.send()
+  function downloadFile (fullName) {
+    fullName = fullName.split('/')
+    const bucketName = fullName[0]
+    const fileName = fullName[1]
     // Add "intercept=true" parameter so service worker can intercept request
-    // fetch(`${downloadUrl}/file/BarFoo/${fileName}?intercept=true`, {
-    //   method: 'GET',
-    //   headers: {
-    //     'Authorization': downloadKey
-    //   },
-    //   mode: 'no-cors',
-    //   credentials: 'include'
-    // }).then(response => response.blob())
-    //   .then(blob => {
-    //     let click = new MouseEvent('click')
-    //     let link = document.createElement('a')
-    //     link.href = URL.createObjectURL(blob)
-    //     link.download = fileName
-    //     link.dispatchEvent(click)
-    //     // body.pipeTo(fileStream)
-    //   })
-    // .then(blob => {
-    //   let fileStream = multiStreamSaver.createWriteStream(fileName)
-    //
-    //   https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/pipeTo
-    //   response.pipeTo(fileStream)
-    //   return blob.pipeTo(fileStream)
-    //   console.log(blob)
-    //
-    //    https://jakearchibald.com/2016/streams-ftw/ - The body is a stream :)
-    //   let reader = response.getReader()
-    //
-    //   let writer = fileStream.getWriter()
-    //   Close the stream so we stop writing OR write one chunk, then get the next one
-    //   let pump = () => reader.read().then(
-    //     res => res.done
-    //       ? writer.close()
-    //       : writer.write(res.value).then(pump))
-    //
-    //   pump()
-    // })
+    fetch(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}?intercept=true`, {
+      method: 'GET'
+    }).then(response => response.blob())
+      .then(blob => {
+        let click = new MouseEvent('click')
+        let link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = fileName
+        link.dispatchEvent(click)
+      })
   }
 })()

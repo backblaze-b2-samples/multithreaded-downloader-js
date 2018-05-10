@@ -25,20 +25,30 @@
   </ul>
   <h2>Demo</h2>
   <h3>BackBlaze API</h3>
+  <small>When using the command line tool, remember to escape JSON with single quotes.</small>
+  <pre>
+--corsRules '[{
+  "corsRuleName": "localDevGithub",
+  "allowedOrigins": ["*"],
+  "allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],
+  "allowedHeaders": ["*"],
+  "exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],
+  "maxAgeSeconds": 10240
+}]'
+  </pre>
   <select id="B2FileList" name="B2FileList">
     <option>Select a file.</option>
-    <option value="archlinux.svg">archlinux.svg</option>
-    <option value="https://f000.backblazeb2.com/file/nilayp/uploads-small.tar.gz">uploads-small.tar.gz</option>
-    <option value="https://f000.backblazeb2.com/file/nilayp/uploads-smallmedium.tar.gz">uploads-smallmedium.tar.gz</option>
-    <option value="https://f000.backblazeb2.com/file/nilayp/5GB.txt">5GB.txt</option>
+    <option value="FooBaz/importantcss.jpg">FooBaz/importantcss.jpg</option>
+    <option value="FooBaz/SHORanger.pdf">FooBaz/SHORanger.pdf</option>
+    <option value="FooBaz/install_backblaze_e949706fe14abade8.exe">FooBaz/install_backblaze_e949706fe14abade8.exe</option>
   </select>
-  <!-- <h3>Google Drive API</h3>
+  <h3>Google Drive API</h3>
   <button id="signin-button" style="display: none;">Sign In</button>
   <button id="signout-button" style="display: none;">Sign Out</button>
   <br/>
   <select id="GDFileList" name="GDFileList">
     <option>Select a file.</option>
-  </select> -->
+  </select>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
   <script defer src="multiThreadedDownloader.js"></script>
@@ -49,11 +59,11 @@
     }
   </script>
 
-  <!-- <script defer src="googleDrive.js"></script>
+  <script defer src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()">
-  </script> -->
+  </script>
 </body>
 
 </html>

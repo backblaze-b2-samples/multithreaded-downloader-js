@@ -1,0 +1,10 @@
+[{
+  "corsRuleName": "localDevGithub",
+  "allowedOrigins": ["*"],
+  "allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],
+  "allowedHeaders": ["*"],
+  "exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],
+  "maxAgeSeconds": 10240
+}]
+
+'[{"corsRuleName": "localDevGithub","allowedOrigins": ["*"],"allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],"allowedHeaders": ["*"],"exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],"maxAgeSeconds": 10240}]'

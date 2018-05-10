@@ -31,7 +31,7 @@ function createStream (resolve, reject, port) {
 
 // Size of one chunk when requesting with Range
 // let chunkSize = 5120000
-let numThreads = 8
+let numThreads = 5
 
 // Concat two ArrayBuffers
 function concatArrayBuffer (ab1, ab2) {
@@ -51,7 +51,7 @@ function onHeadResponse (request, response) {
   // content-length header is not accessible from CORS without
   // "Access-Control-Expose-Headers: Content-Length" enabled from the server
   // https://stackoverflow.com/questions/48266678/how-to-get-the-content-length-of-the-response-from-a-request-with-fetch
-  console.log(contentLength, chunkSize, numChunks)
+  console.log(`${numChunks} threads, ${chunkSize} bytes each`)
 
   let promises = []
   for (let i = 0; i < numChunks; i++) {
@@ -60,7 +60,6 @@ function onHeadResponse (request, response) {
     // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
     promises.push(fetch(request.url, {headers: headers, method: 'GET', mode: 'cors'}))
-    console.log('added chunk ' + i)
   }
 
   return Promise.all(promises)
@@ -97,4 +96,6 @@ self.onfetch = event => {
   if (url.origin === location.origin) {
     return event.respondWith(fetch(event.request, {mode: 'same-origin'}))
   }
+
+  return event.respondWith(fetch(event.request))
 }
