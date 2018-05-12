@@ -69,26 +69,42 @@ function onHeadResponse (request, response) {
 
 self.onfetch = event => {
   let url = new URL(event.request.url)
+  let pathname = url.pathname.split('/')
+  // intercept all requests with "threads" parameter
+  if (url.searchParams.get('threads')) {
+    // get any additional parameters
+    let options = {
+      fileName: pathname[pathname.length - 1],
+      retries: url.searchParams.get('retries') || 3,
+      retryDelay: url.searchParams.get('retryDelay') || 1000,
+      retryOn: url.searchParams.get('retryOn') || [],
+      threads: url.searchParams.get('threads')
+    }
 
-  if (url.searchParams.get('intercept')) {
-    url.searchParams.delete('intercept')
-    console.log('intercepted', url.href)
-    let req = new Request(url.href, {headers: event.request.headers, method: 'HEAD', mode: event.request.mode})
+    // remove any additional parameters
+    url.searchParams.delete('retries')
+    url.searchParams.delete('retryDelay')
+    url.searchParams.delete('retryOn')
+    url.searchParams.delete('threads')
 
+    let req = new Request(url.href, {
+      headers: event.request.headers,
+      method: 'HEAD',
+      mode: event.request.mode
+    })
+
+    return event.respondWith(retryFetch(req, options).then(onHeadResponse.bind(this, req, options)))
     // let headers = {
     //   'Content-Type': 'application/octet-stream; charset=utf-8',
     //   'Content-Disposition': "attachment; filename*=UTF-8''" + filename
     // }
-    //
     // if (data.size) {
     //   headers['Content-Length'] = data.size
     // }
-    //
     // event.respondWith(new Response(stream, {headers}))
-
-    return event.respondWith(fetch(req).then(onHeadResponse.bind(this, req)))
   }
 
+  // default requests
   if (event.request.mode === 'navigate') {
     return event.respondWith(fetch(event.request))
   }

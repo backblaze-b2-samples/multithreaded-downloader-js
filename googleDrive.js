@@ -1,8 +1,6 @@
 (() => {
   let mtd = new MultiThreadedDownloader()
 
-  !mtd.supported() && console.error('Either ReadableStream or WritableStream is not supported!')
-
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
     gapi.load('client:auth2', () => {
@@ -93,7 +91,7 @@
     let accessToken = user.getAuthResponse().access_token
 
     // Add "intercept=true" parameter so service worker can intercept request
-    window.fetch(`https://www.googleapis.com/drive/v3/files/${fileID}?alt=media&intercept=true`, {
+    window.fetch(`https://www.googleapis.com/drive/v3/files/${fileID}?alt=media&threads=4`, {
       headers: new window.Headers({'Authorization': `Bearer ${accessToken}`})
     }).then(response => response.blob())
       .then(blob => {

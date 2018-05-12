@@ -22,8 +22,9 @@
     fullName = fullName.split('/')
     const bucketName = fullName[0]
     const fileName = fullName[1]
-    // Add "intercept=true" parameter so service worker can intercept request
-    fetch(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}?intercept=true`, {
+
+    // Add "threads=(number of threads)" parameter so service worker can intercept request
+    fetch(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}?threads=${threads}&retries=${retries}&retryDelay=${retryDelay}`, {
       method: 'GET'
     }).then(response => response.blob())
       .then(blob => {
