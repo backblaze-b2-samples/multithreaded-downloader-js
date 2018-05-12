@@ -1,28 +1,3 @@
-function createStream (resolve, reject, port) {
-  // ReadableStream is only supported by chrome 52
-  let bytesWritten = 0
-  return new ReadableStream({
-    start (controller) {
-      // When we receive data on the messageChannel, we write
-      port.onmessage = ({data}) => {
-        if (data === 'end') {
-          resolve()
-          return controller.close()
-        }
-
-        if (data === 'abort') {
-          resolve()
-          controller.error('Aborted the download')
-          return
-        }
-
-        controller.enqueue(data)
-        bytesWritten += data.byteLength
-        port.postMessage({bytesWritten})
-      }
-    },
-    cancel () {
-      console.log('user aborted')
     }
   })
 }
@@ -115,3 +90,31 @@ self.onfetch = event => {
 
   return event.respondWith(fetch(event.request))
 }
+// function createStream (resolve, reject, port) {
+//   // ReadableStream is only supported by chrome 52
+//   let bytesWritten = 0
+//   return new ReadableStream({
+//     start (controller) {
+//       // When we receive data on the messageChannel, we write
+//       port.onmessage = ({data}) => {
+//         if (data === 'end') {
+//           resolve()
+//           return controller.close()
+//         }
+//
+//         if (data === 'abort') {
+//           resolve()
+//           controller.error('Aborted the download')
+//           return
+//         }
+//
+//         controller.enqueue(data)
+//         bytesWritten += data.byteLength
+//         port.postMessage({bytesWritten})
+//       }
+//     },
+//     cancel () {
+//       console.log('user aborted')
+//     }
+//   })
+// }
