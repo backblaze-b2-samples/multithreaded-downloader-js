@@ -18,7 +18,7 @@ Fetches parts of a file using the HTTP Range header and downloads those pieces i
   - retries: number of time to retry this request
   - retryDelay: ms delay before a retry
   - retryOn: array of HTTP status codes that will specifically trigger a retry
-    ie: "?threads=8&retries=3&retryDelay=1000&retryOn=503"
+  * ie: "?threads=8&retries=3&retryDelay=1000&retryOn=503"
 
 * More research is needed:
   - Transform stream to concatenate ArrayBuffers?
