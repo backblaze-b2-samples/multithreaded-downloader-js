@@ -2,11 +2,13 @@
 A browser based multithreaded downloader implemented in vanilla Javascript.
 
 This project is under development.
+[Project Page](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/)
 
 Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder.
 
-- [BackBlaze B2 Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/backBlaze.html)
-- [Google Drive Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/googleDrive.html)
+* Demo
+  - [BackBlaze B2](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/backBlaze.html)
+  - [Google Drive](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/googleDrive.html)
 
 * 100% client side JavaScript, no plugins or proxy required
 * Service worker intercepts all fetch requests with a "threads" url parameter
