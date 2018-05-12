@@ -1,12 +1,55 @@
+let retryFetch = function (url, options) {
+  let retries = 3
+  let retryDelay = 1000
+  let retryOn = []
+
+  if (options && options.retries) {
+    retries = options.retries
+  }
+
+  if (options && options.retryDelay) {
+    retryDelay = options.retryDelay
+  }
+
+  if (options && options.retryOn) {
+    if (options.retryOn instanceof Array) {
+      retryOn = options.retryOn
     }
+  }
+
+  return new Promise(function (resolve, reject) {
+    function retryFetch (n) {
+      fetch(url, options)
+        .then(function (response) {
+          if (retryOn.indexOf(response.status) === -1) {
+            resolve(response)
+          } else {
+            if (n > 0) {
+              retry(n)
+            } else {
+              reject(response)
+            }
+          }
+        })
+        .catch(function (error) {
+          if (n > 0) {
+            retry(n)
+          } else {
+            reject(error)
+          }
+        })
+    }
+
+    function retry (n) {
+      setTimeout(function () {
+        console.log('retryFetch: retry: ', retryDelay)
+        retryFetch(--n)
+      }, retryDelay)
+    }
+
+    retryFetch(retries)
   })
 }
-
-// https://blog.ghaiklor.com/parallel-chunk-requests-in-a-browser-via-service-workers-7be10be2b75f
-
-// Size of one chunk when requesting with Range
-// let chunkSize = 5120000
-let numThreads = 5
 
 // Concat two ArrayBuffers
 function concatArrayBuffer (ab1, ab2) {
@@ -16,30 +59,33 @@ function concatArrayBuffer (ab1, ab2) {
   return tmp.buffer
 }
 
-// Triggers each time when HEAD request is successful. Returns promise that fulfils into new Response object
-function onHeadResponse (request, response) {
-  // Google drive response headers are all lower case, B2 is not!!!
+// "Access-Control-Expose-Headers: Content-Length" must be enabled for HEAD requests!
+// Triggers when a HEAD request is successful. Returns a promise that fulfils into a new Response object
+// https://blog.ghaiklor.com/parallel-chunk-requests-in-a-browser-via-service-workers-7be10be2b75f
+function onHeadResponse (request, options, response) {
+  // Google drive response headers are all lower case, B2's are not!
   const contentLength = response.headers.get('Content-Length') || response.headers.get('content-length')
-  const chunkSize = Math.ceil(contentLength / numThreads)
+  const chunkSize = Math.ceil(contentLength / options.threads)
   const numChunks = Math.ceil(contentLength / chunkSize)
-
-  // content-length header is not accessible from CORS without
-  // "Access-Control-Expose-Headers: Content-Length" enabled from the server
-  // https://stackoverflow.com/questions/48266678/how-to-get-the-content-length-of-the-response-from-a-request-with-fetch
-  console.log(`${numChunks} threads, ${chunkSize} bytes each`)
 
   let promises = []
   for (let i = 0; i < numChunks; i++) {
     const headers = new Headers(request.headers)
-    // headers.append('Content-Type', 'application/octet-stream; charset=utf-8')
-    // headers.append('Content-Disposition', "attachment; filename*=UTF-8''" + filename)
     headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
-    promises.push(fetch(request.url, {headers: headers, method: 'GET', mode: 'cors'}))
+    options = Object.assign(options, {
+      headers: headers,
+      method: 'GET',
+      mode: 'cors'
+    })
+    promises.push(retryFetch(request.url, options))
   }
+
+  const headers = new Headers(response.headers)
+  headers.append('Content-Disposition', `attachment; filename="${options.fileName}"`)
 
   return Promise.all(promises)
     .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
-    .then(buffers => new Response(buffers.reduce(concatArrayBuffer, new Uint8Array()), {headers: response.headers}))
+    .then(buffers => new Response(buffers.reduce(concatArrayBuffer, new Uint8Array()), {headers: headers}))
 }
 
 self.onfetch = event => {
@@ -90,6 +136,12 @@ self.onfetch = event => {
 
   return event.respondWith(fetch(event.request))
 }
+
+// always install updated service worker immediately
+self.addEventListener('install', event => {
+  self.skipWaiting()
+})
+
 // function createStream (resolve, reject, port) {
 //   // ReadableStream is only supported by chrome 52
 //   let bytesWritten = 0

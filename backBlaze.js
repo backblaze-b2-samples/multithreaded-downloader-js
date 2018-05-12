@@ -1,24 +1,19 @@
 (() => {
   let mtd = new MultiThreadedDownloader()
 
-  !mtd.supported() && console.error('Either ReadableStream or WritableStream is not supported!')
-
-  // const accountID = 'e949706fe14a'
-  // const apiUrl = 'https://api002.backblazeb2.com'
-  // const applicationKey = '002370c2f2ad311d2bd2a189368f58354dd2495e19'
-  // const credentials = window.btoa(`${accountID}:${applicationKey}`)
-  // const downloadKey = '3_20180509062706_bb6088159451eb57b33c51c4_799b49c13526c2c0bf2f9dec00a174d4ba762712_002_20180510062706_0013_dnld'
-
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
     let index = event.target.options.selectedIndex
     let fileName = event.target.options[index].value
+    let threads = parseInt(document.getElementById('B2Threads').value)
+    let retries = parseInt(document.getElementById('B2Retries').value)
+    let retryDelay = parseInt(document.getElementById('B2RetryDelay').value)
     if (index > 0) {
-      downloadFile(fileName)
+      downloadFile(fileName, threads, retries, retryDelay)
     }
   }
 
-  function downloadFile (fullName) {
+  function downloadFile (fullName, threads, retries, retryDelay) {
     fullName = fullName.split('/')
     const bucketName = fullName[0]
     const fileName = fullName[1]
