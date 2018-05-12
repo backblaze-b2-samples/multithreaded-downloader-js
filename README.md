@@ -4,8 +4,9 @@ A browser based multithreaded downloader implemented in vanilla Javascript.
 This project is under development.
 
 Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder.
-[BackBlaze B2 Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/backBlaze.html)
-[Google Drive Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/googleDrive.html)
+
+- [BackBlaze B2 Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/backBlaze.html)
+- [Google Drive Demo](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/googleDrive.html)
 
 * 100% client side JavaScript, no plugins or proxy required
 * Service worker intercepts all fetch requests with a "threads" url parameter
@@ -13,7 +14,7 @@ Fetches parts of a file using the HTTP Range header and downloads those pieces i
 * Sends multiple HTTP GET requests with range headers
 * Concatenates range responses into a single response
 * Respose triggers download with [a[download]](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#attr-download)
-* Retry on fail or specific HTTP status codes (503 Service Unavailable)
+* Retry on fail or specific HTTP status codes (like 503 Service Unavailable)
 
 * Accepted url parameters:
   - threads: number of concurrent requests to use
@@ -22,7 +23,7 @@ Fetches parts of a file using the HTTP Range header and downloads those pieces i
   - retryOn: array of HTTP status codes that will specifically trigger a retry
     ie: "?threads=8&retries=3&retryDelay=1000&retryOn=503"
 
-* More research:
+* More research is needed:
   - Transform stream to concatenate ArrayBuffers?
   - Saving stream directly to the filesystem?
 
