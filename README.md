@@ -3,7 +3,7 @@ A browser based multithreaded downloader implemented in vanilla Javascript.
 
 This project is under development.
 
-Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder. [Project Page](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/)
+Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder. [Project Demo Page](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/)
 
 * 100% client side JavaScript, no plugins or proxy required
 * Service worker intercepts all fetch requests with a "threads" url parameter
@@ -23,11 +23,6 @@ Fetches parts of a file using the HTTP Range header and downloads those pieces i
 * More research is needed:
   - Transform stream to concatenate ArrayBuffers?
   - Saving stream directly to the filesystem?
-
-* Demo
-  - [BackBlaze B2](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/backBlaze.html)
-  - [Google Drive](https://backblaze-b2-samples.github.io/multithreaded-downloader-js/googleDrive.html)
-
 
 * Based on:
   - [fetch-retry](https://github.com/jonbern/fetch-retry)
