@@ -1,25 +1,31 @@
 (() => {
   let mtd = new MultiThreadedDownloader()
+  const bucketName = 'FooBaz'
 
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
-    let index = event.target.options.selectedIndex
-    let fileName = event.target.options[index].value
-    let threads = parseInt(document.getElementById('B2Threads').value)
-    let retries = parseInt(document.getElementById('B2Retries').value)
-    let retryDelay = parseInt(document.getElementById('B2RetryDelay').value)
+    const index = event.target.options.selectedIndex
+    const fileName = event.target.options[index].value
+    const threads = parseInt(document.getElementById('B2Threads').value)
+    const retries = parseInt(document.getElementById('B2Retries').value)
+    const retryDelay = parseInt(document.getElementById('B2RetryDelay').value)
     if (index > 0) {
-      downloadFile(fileName, threads, retries, retryDelay)
+      // Clear out any progress elements
+      let el = document.getElementById('progressArea')
+      while (el.firstChild) {
+        el.removeChild(el.firstChild)
+      }
+      downloadFile(bucketName, fileName, threads, retries, retryDelay)
     }
   }
 
-  function downloadFile (fullName, threads, retries, retryDelay) {
-    fullName = fullName.split('/')
-    const bucketName = fullName[0]
-    const fileName = fullName[1]
+  function downloadFile (bucketName, fileName, threads, retries, retryDelay) {
+    const url = new URL(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}`)
+    url.searchParams.set('threads', threads)
+    url.searchParams.set('retries', retries)
+    url.searchParams.set('retryDelay', retryDelay)
 
-    // Add "threads=(number of threads)" parameter so service worker can intercept request
-    fetch(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}?threads=${threads}&retries=${retries}&retryDelay=${retryDelay}`, {
+    fetch(url, {
       method: 'GET'
     }).then(response => response.blob())
       .then(blob => {

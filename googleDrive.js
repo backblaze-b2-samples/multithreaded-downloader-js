@@ -90,8 +90,13 @@
     let user = gapi.auth2.getAuthInstance().currentUser.get()
     let accessToken = user.getAuthResponse().access_token
 
-    // Add "intercept=true" parameter so service worker can intercept request
-    window.fetch(`https://www.googleapis.com/drive/v3/files/${fileID}?alt=media&threads=4`, {
+    const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileID}`)
+    url.searchParams.set('alt', 'media')
+    url.searchParams.set('threads', parseInt(document.getElementById('GDThreads').value))
+    url.searchParams.set('retries', parseInt(document.getElementById('GDRetries').value))
+    url.searchParams.set('retryDelay', parseInt(document.getElementById('GDRetryDelay').value))
+
+    fetch(url, {
       headers: new window.Headers({'Authorization': `Bearer ${accessToken}`})
     }).then(response => response.blob())
       .then(blob => {

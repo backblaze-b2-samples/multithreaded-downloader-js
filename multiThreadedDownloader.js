@@ -1,6 +1,8 @@
 class MultiThreadedDownloader {
   constructor () {
     if (this.supported()) {
+      this.progressElements = []
+      navigator.serviceWorker.addEventListener('message', event => this.progress(event.data))
       navigator.serviceWorker.register('serviceWorker.js', {
         scope: window.location.href
       })
@@ -11,13 +13,20 @@ class MultiThreadedDownloader {
 
   supported () {
     try {
-      // Some browser has it but ain't allowed to construct a stream yet
       return 'serviceWorker' in navigator && !!new window.ReadableStream() && !!new window.WritableStream()
     } catch (err) {
-      // if you are running chrome < 52 then you can enable it
-      // `chrome://flags/#enable-experimental-web-platform-features`
       return false
     }
+  }
+
+  progress ({loaded, total, chunk, url}) {
+    if (!this.progressElements[url + chunk]) {
+      let el = document.createElement('progress')
+      el.classList.add('progressBar')
+      this.progressElements[url + chunk] = el
+      document.getElementById('progressArea').appendChild(el)
+    }
+    this.progressElements[url + chunk].value = loaded / total
   }
 
   createWriteStream (fileName, queuingStrategy, fileSize) {

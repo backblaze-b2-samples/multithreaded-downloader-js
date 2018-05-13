@@ -5,6 +5,14 @@
   <meta charset="utf-8">
   <title>Multi Threaded Downloader</title>
   <style>.github-corner:hover .octo-arm{animation: octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%, 100%{transform: rotate(0)}20%, 60%{transform: rotate(-25deg)}40%, 80%{transform: rotate(10deg)}}@media (max-width: 500px){.github-corner:hover .octo-arm{animation: none}.github-corner .octo-arm{animation: octocat-wave 560ms ease-in-out}.github-corner-text{display: none;}.github-corner svg{height: 50px; width: 50px;}}</style>
+  <style>
+    .progressBar {
+      display: block;
+      height: 1em;
+      margin: .5em;
+      width: 50%;
+    }
+  </style>
 </head>
 
 <body>
@@ -34,6 +42,7 @@
   <input type="number" id="B2RetryDelay" name="B2RetryDelay" value="2000">
   <label for="B2RetryDelay">Retry Delay</label>
   <br/>
+  <div id="progressArea"></div>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
   <script defer src="multiThreadedDownloader.js"></script>
