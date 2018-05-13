@@ -3,9 +3,8 @@ class MultiThreadedDownloader {
     if (this.supported()) {
       this.progressElements = []
       navigator.serviceWorker.addEventListener('message', event => this.progress(event.data))
-      navigator.serviceWorker.register('serviceWorker.js', {
-        scope: window.location.href
-      })
+      navigator.serviceWorker.register('serviceWorker.js')
+      // scope: window.location.href
     } else {
       console.error('Either Service Workers or Web Streams are not supported!')
     }
