@@ -1,6 +1,7 @@
 (() => {
   let mtd = new MultiThreadedDownloader()
-  const bucketName = 'FooBaz'
+  const bucketName = 'nilayp'
+  const clusterNum = '000'
 
   let fileList = document.getElementById('B2FileList')
   fileList.onclick = event => {
@@ -15,12 +16,12 @@
       while (el.firstChild) {
         el.removeChild(el.firstChild)
       }
-      downloadFile(bucketName, fileName, threads, retries, retryDelay)
+      downloadFile(clusterNum, bucketName, fileName, threads, retries, retryDelay)
     }
   }
 
-  function downloadFile (bucketName, fileName, threads, retries, retryDelay) {
-    const url = new URL(`https://f002.backblazeb2.com/file/${bucketName}/${fileName}`)
+  function downloadFile (clusterNum, bucketName, fileName, threads, retries, retryDelay) {
+    const url = new URL(`https://f${clusterNum}.backblazeb2.com/file/${bucketName}/${fileName}`)
     url.searchParams.set('threads', threads)
     url.searchParams.set('retries', retries)
     url.searchParams.set('retryDelay', retryDelay)
