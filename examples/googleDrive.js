@@ -1,5 +1,5 @@
 (() => {
-  let mtd = new MultiThreadedDownloader()
+  // let mtd = new MultiThreadedDownloader()
 
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
@@ -60,11 +60,13 @@
             addOption(file.id, `${file.name}`)
           }
         }
-        let fileList = document.getElementById('GDFileList')
-        fileList.onclick = (event) => {
-          let index = event.target.options.selectedIndex
-          let fileID = event.target.options[index].value
-          let fileName = event.target.options[index].innerText
+
+        const downloadButton = document.getElementById('GDDownload')
+        downloadButton.onclick = (event) => {
+          let fileList = document.getElementById('GDFileList')
+          let index = fileList.options.selectedIndex
+          let fileID = fileList.options[index].value
+          let fileName = fileList.options[index].innerText
           if (index > 0) {
             downloadFile(fileID, fileName)
           }
@@ -87,40 +89,24 @@
   // https://developers.google.com/drive/v3/web/manage-downloads
   function downloadFile (fileID, fileName) {
     // https://developers.google.com/api-client-library/javascript/features/cors
-    let user = gapi.auth2.getAuthInstance().currentUser.get()
-    let accessToken = user.getAuthResponse().access_token
-
+    const user = gapi.auth2.getAuthInstance().currentUser.get()
+    const accessToken = user.getAuthResponse().access_token
+    const headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
+    const threads = parseInt(document.getElementById('GDThreads').value)
+    const retries = parseInt(document.getElementById('GDRetries').value)
+    const retryDelay = parseInt(document.getElementById('GDRetryDelay').value)
     const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileID}`)
     url.searchParams.set('alt', 'media')
-    url.searchParams.set('threads', parseInt(document.getElementById('GDThreads').value))
-    url.searchParams.set('retries', parseInt(document.getElementById('GDRetries').value))
-    url.searchParams.set('retryDelay', parseInt(document.getElementById('GDRetryDelay').value))
 
-    fetch(url, {
-      headers: new window.Headers({'Authorization': `Bearer ${accessToken}`})
-    }).then(response => response.blob())
-      .then(blob => {
-        // let fileStream = mtd.createWriteStream(`${fileName}.txt`)
-        //
-        // // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/pipeTo
-        // let reader = body.getReader()
-        // // body.pipeTo(fileStream)
-        //
-        // // https://jakearchibald.com/2016/streams-ftw/ - The body is a stream :)
-        // let writer = fileStream.getWriter()
-        //
-        // // Write one chunk and get the next one OR stop writing and close the stream
-        // let pump = () => reader.read().then(
-        //   res => !res.done
-        //     ? writer.write(res.value).then(pump)
-        //     : writer.close())
-        //
-        // pump()
-        let click = new MouseEvent('click')
-        let link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = fileName
-        link.dispatchEvent(click)
-      })
+    const downloader = new MultiThreadedDownloader(url, { headers, threads, retries, retryDelay }).then(() => {
+      document.getElementById('GDCancel').setAttribute('disabled', true)
+    })
+
+    const cancelButton = document.getElementById('GDCancel')
+    cancelButton.removeAttribute('disabled')
+    cancelButton.onclick = event => {
+      downloader.controller.abort()
+      cancelButton.setAttribute('disabled', true)
+    }
   }
 })()

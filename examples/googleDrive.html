@@ -24,32 +24,35 @@
     </svg>
   </a>
 
-  <h2>BackBlaze B2 Demo</h2>
-  <select id="B2FileList" name="B2FileList">
+  <h2>Google Drive Demo</h2>
+  <button id="signin-button" style="display: none;">Sign In</button>
+  <button id="signout-button" style="display: none;">Sign Out</button>
+  <br/>
+  <select id="GDFileList" name="GDFileList">
     <option>Select a file.</option>
-    <option value="1GB.txt">1GB.txt</option>
-    <option value="5GB.txt">5GB.txt</option>
-    <option value="10GB.txt">10GB.txt</option>
-    <option value="50GB.txt">50GB.txt</option>
   </select>
   <br/>
-  <input type="number" id="B2Threads" name="B2Threads" value="4">
-  <label for="B2Threads">Threads</label>
+  <input type="number" id="GDThreads" name="GDThreads" value="4">
+  <label for="GDThreads">Threads</label>
   <br/>
-  <input type="number" id="B2Retries" name="B2Retries" value="2">
-  <label for="B2Retries">Retries</label>
+  <input type="number" id="GDRetries" name="GDRetries" value="2">
+  <label for="GDRetries">Retries</label>
   <br/>
-  <input type="number" id="B2RetryDelay" name="B2RetryDelay" value="2000">
-  <label for="B2RetryDelay">Retry Delay</label>
+  <input type="number" id="GDRetryDelay" name="GDRetryDelay" value="2000">
+  <label for="GDRetryDelay">Retry Delay</label>
   <br/>
-  <button type="button" id="B2Download">Download</button>
-  <button type="button" id="B2Cancel" disabled>Cancel</button>
+  <button type="button" id="GDDownload">Download</button>
+  <button type="button" id="GDCancel" disabled>Cancel</button>
   <br/>
   <div id="progressArea"></div>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="multiThreadedDownloader.js"></script>
-  <script defer src="backBlaze.js"></script>
+  <script defer src="/multiThreadedDownloader.js"></script>
+  <script defer src="googleDrive.js"></script>
+  <script async defer src="https://apis.google.com/js/api.js"
+    onload="this.onload=function(){};handleClientLoad()"
+    onreadystatechange="if (this.readyState === 'complete') this.onload()">
+  </script>
 </body>
 
 </html>

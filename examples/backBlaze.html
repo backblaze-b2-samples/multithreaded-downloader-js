@@ -24,32 +24,36 @@
     </svg>
   </a>
 
-  <h2>Google Drive Demo</h2>
-  <button id="signin-button" style="display: none;">Sign In</button>
-  <button id="signout-button" style="display: none;">Sign Out</button>
-  <br/>
-  <select id="GDFileList" name="GDFileList">
+  <h2>BackBlaze B2 Demo</h2>
+  <select id="B2FileList" name="B2FileList">
     <option>Select a file.</option>
+    https://f002.backblazeb2.com/file/FooBaz/install_backblaze_e949706fe14abade8.exe
+    <option data-cluster-num="000" data-bucket-name="nilayp" value="1GB.txt">1GB.txt</option>
+    <option data-cluster-num="000" data-bucket-name="nilayp" value="5GB.txt">5GB.txt</option>
+    <option data-cluster-num="000" data-bucket-name="nilayp" value="10GB.txt">10GB.txt</option>
+    <option data-cluster-num="000" data-bucket-name="nilayp" value="50GB.txt">50GB.txt</option>
+    <option data-cluster-num="002" data-bucket-name="FooBaz" value="install_backblaze_e949706fe14abade8.exe">install_backblaze_e949706fe14abade8.exe</option>
+    <option data-cluster-num="002" data-bucket-name="FooBaz" value="SHORanger.pdf">SHORanger.pdf</option>
+    <option data-cluster-num="002" data-bucket-name="FooBaz" value="dummy.dat">dummy.dat</option>
   </select>
   <br/>
-  <input type="number" id="GDThreads" name="GDThreads" value="4">
-  <label for="GDThreads">Threads</label>
+  <input type="number" id="B2Threads" name="B2Threads" value="4">
+  <label for="B2Threads">Threads</label>
   <br/>
-  <input type="number" id="GDRetries" name="GDRetries" value="2">
-  <label for="GDRetries">Retries</label>
+  <input type="number" id="B2Retries" name="B2Retries" value="2">
+  <label for="B2Retries">Retries</label>
   <br/>
-  <input type="number" id="GDRetryDelay" name="GDRetryDelay" value="2000">
-  <label for="GDRetryDelay">Retry Delay</label>
+  <input type="number" id="B2RetryDelay" name="B2RetryDelay" value="2000">
+  <label for="B2RetryDelay">Retry Delay</label>
+  <br/>
+  <button type="button" id="B2Download">Download</button>
+  <button type="button" id="B2Cancel" disabled>Cancel</button>
   <br/>
   <div id="progressArea"></div>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="multiThreadedDownloader.js"></script>
-  <script defer src="googleDrive.js"></script>
-  <script async defer src="https://apis.google.com/js/api.js"
-    onload="this.onload=function(){};handleClientLoad()"
-    onreadystatechange="if (this.readyState === 'complete') this.onload()">
-  </script>
+  <script defer src="/multiThreadedDownloader.js"></script>
+  <script defer src="backBlaze.js"></script>
 </body>
 
 </html>
