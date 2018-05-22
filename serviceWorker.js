@@ -67,7 +67,7 @@ function fetchRetry (url, options) {
   }
 
   return new Promise(function (resolve, reject) {
-    function fetchRetry (retriesRemaining) {
+    function fetchAttempt (retriesRemaining) {
       fetch(url, options)
         .then(function (response) {
           if (retryOn.indexOf(response.status) === -1) {
@@ -91,11 +91,11 @@ function fetchRetry (url, options) {
 
     function retry (retriesRemaining) {
       setTimeout(() => {
-        fetchRetry(--retriesRemaining)
+        fetchAttempt(--retriesRemaining)
       }, retryDelay)
     }
 
-    fetchRetry(retries)
+    fetchAttempt(retries)
   })
 }
 
@@ -157,7 +157,8 @@ self.onfetch = event => {
       retries: url.searchParams.get('retries') || 3,
       retryDelay: url.searchParams.get('retryDelay') || 1000,
       retryOn: url.searchParams.get('retryOn') || [],
-      threads: url.searchParams.get('threads')
+      threads: url.searchParams.get('threads'),
+      signal: event.request.signal
     }
 
     // Remove any additional url parameters
