@@ -1,5 +1,10 @@
 class MultiThreadedDownloader {
-  constructor (url, options = { threads: 4, retries: 3, retryDelay: 1000, retryOn: [] }) {
+  constructor (url, options = {
+    threads: 4,
+    retries: 3,
+    retryDelay: 1000,
+    retryOn: []
+  }) {
     if (!this.supported()) {
       console.error('Web Streams are not supported!')
       return
@@ -19,7 +24,8 @@ class MultiThreadedDownloader {
       mode: 'cors',
       signal: this.controller.signal
     }).then(this.onHeadResponse.bind(this))
-      .then(response => response.blob()).then(blob => {
+      .then(response => response.blob())
+      .then(blob => {
         let link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = this.fileName
@@ -45,18 +51,15 @@ class MultiThreadedDownloader {
     // Build range requests
     let promises = []
     for (let i = 0; i < numChunks; i++) {
-      const headers = new Headers()
+      const headers = new Headers ()
       headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
 
-      promises.push(
-        this.fetchRetry(this.url, {
-          headers: headers,
-          method: 'GET',
-          mode: 'cors',
-          signal: this.controller.signal
-        })
-          .then(response => this.respondWithProgressMonitor({chunk: i + 1}, response))
-      )
+      promises.push(this.fetchRetry(this.url, {
+        headers: headers,
+        method: 'GET',
+        mode: 'cors',
+        signal: this.controller.signal
+      }).then(response => this.respondWithProgressMonitor({ chunk: i + 1 }, response)))
     }
 
     const headers = new Headers(response.headers)
@@ -68,32 +71,30 @@ class MultiThreadedDownloader {
       .then(buffers => new Response(buffers.reduce(this.concatArrayBuffer, new Uint8Array()), {headers: headers}))
   }
 
-
   fetchRetry (url, init) {
     const retries = this.retries
     const retryDelay = this.retryDelay
     const retryOn = this.retryOn || []
+
     return new Promise(function (resolve, reject) {
       function fetchAttempt (retriesRemaining) {
-        fetch(url, init)
-          .then(function (response) {
-            if (retryOn.indexOf(response.status) === -1) {
-              resolve(response)
-            } else {
-              if (retriesRemaining > 0) {
-                retry(retriesRemaining)
-              } else {
-                reject(response)
-              }
-            }
-          })
-          .catch(function (error) {
+        fetch(url, init).then(function (response) {
+          if (retryOn.indexOf(response.status) === -1) {
+            resolve(response)
+          } else {
             if (retriesRemaining > 0) {
               retry(retriesRemaining)
             } else {
-              reject(error)
+              reject(response)
             }
-          })
+          }
+        }).catch(function (error) {
+          if (retriesRemaining > 0) {
+            retry(retriesRemaining)
+          } else {
+            reject(error)
+          }
+        })
       }
 
       function retry (retriesRemaining) {
@@ -133,41 +134,39 @@ class MultiThreadedDownloader {
     const els = this.progressElements
     let loaded = 0
 
-    return new Response(
-      new ReadableStream({
-        start (controller) {
-          // Await resolution of first read() progress is sent for indicator accuracy
-          read()
+    return new Response(new ReadableStream({
+      start (controller) {
+        // Await resolution of first read() progress is sent for indicator accuracy
+        read()
 
-          function read () {
-            reader.read().then(({done, value}) => {
-              if (done) {
-                controller.close()
-                return
-              }
+        function read () {
+          reader.read().then(({done, value}) => {
+            if (done) {
+              controller.close()
+              return
+            }
 
-              controller.enqueue(value)
-              loaded += value.byteLength
-              progress({loaded, total, chunk: options.chunk, url: response.url, els})
-              read()
-            }).catch(error => {
-              // error only typically occurs if network fails mid-download
-              // console.error(error)
-              controller.error(error)
-            })
-          }
-        },
-
-        // Firefox excutes this on page stop, Chrome does not
-        cancel (reason) {
-          console.log('cancel()', reason)
+            controller.enqueue(value)
+            loaded += value.byteLength
+            progress({loaded, total, chunk: options.chunk, url: response.url, els})
+            read()
+          }).catch(error => {
+            // error only typically occurs if network fails mid-download
+            // console.error(error)
+            controller.error(error)
+          })
         }
-      })
-    )
+      },
+
+      // Firefox excutes this on page stop, Chrome does not
+      cancel (reason) {
+        console.log('cancel()', reason)
+      }
+    }))
   }
 
   // createWriteStream (fileName, queuingStrategy, fileSize) {
-  //   // normalize arguments
+  //    normalize arguments
   //   if (Number.isFinite(queuingStrategy)) {
   //     [fileSize, queuingStrategy] = [queuingStrategy, fileSize]
   //   }
@@ -178,28 +177,28 @@ class MultiThreadedDownloader {
   //
   //   return new window.WritableStream({
   //     start (controller) {
-  //       // is called immediately, and should perform any actions necessary to
-  //       // acquire access to the underlying sink. If the process is asynchronous,
-  //       // it can return a promise to signal success or failure.
-  //       // return setupMessageChannel()
+  //        is called immediately, and should perform any actions necessary to
+  //        acquire access to the underlying sink. If the process is asynchronous,
+  //        it can return a promise to signal success or failure.
+  //        return setupMessageChannel()
   //     },
   //     write (chunk) {
-  //       // is called when a new chunk of data is ready to be written to the
-  //       // underlying sink. It can return a promise to signal success or failure
-  //       // of the write operation. The stream implementation guarantees that
-  //       // this method will be called only after previous writes have succeeded,
-  //       // and never after close or abort is called.
+  //        is called when a new chunk of data is ready to be written to the
+  //        underlying sink. It can return a promise to signal success or failure
+  //        of the write operation. The stream implementation guarantees that
+  //        this method will be called only after previous writes have succeeded,
+  //        and never after close or abort is called.
   //
-  //       // TODO: Kind of important that service worker respond back when it has
-  //       // been written. Otherwise we can't handle backpressure
-  //       // messageChannel.port1.postMessage(chunk)
+  //        TODO: Kind of important that service worker respond back when it has
+  //        been written. Otherwise we can't handle backpressure
+  //        messageChannel.port1.postMessage(chunk)
   //     },
   //     close () {
-  //       // messageChannel.port1.postMessage('end')
+  //        messageChannel.port1.postMessage('end')
   //       console.log('All data successfully written!')
   //     },
   //     abort () {
-  //       // messageChannel.port1.postMessage('abort')
+  //        messageChannel.port1.postMessage('abort')
   //     }
   //   }, queuingStrategy)
   // }

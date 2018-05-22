@@ -1,6 +1,4 @@
 (() => {
-  // let mtd = new MultiThreadedDownloader()
-
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
     gapi.load('client:auth2', () => {
@@ -98,9 +96,10 @@
     const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileID}`)
     url.searchParams.set('alt', 'media')
 
-    const downloader = new MultiThreadedDownloader(url, { headers, threads, retries, retryDelay }).then(() => {
-      document.getElementById('GDCancel').setAttribute('disabled', true)
-    })
+    const downloader = new MultiThreadedDownloader(url, {headers, threads, retries, retryDelay})
+      .then(() => {
+        document.getElementById('GDCancel').setAttribute('disabled', true)
+      })
 
     const cancelButton = document.getElementById('GDCancel')
     cancelButton.removeAttribute('disabled')

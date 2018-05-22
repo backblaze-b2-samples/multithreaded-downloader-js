@@ -23,9 +23,11 @@
 
   function downloadFile (clusterNum, bucketName, fileName, threads, retries, retryDelay) {
     const url = new URL(`https://f${clusterNum}.backblazeb2.com/file/${bucketName}/${fileName}`)
-    const downloader = new MultiThreadedDownloader(url, { threads, retries, retryDelay }).then(res => {
-      document.getElementById('B2Cancel').setAttribute('disabled', true)
-    })
+
+    const downloader = new MultiThreadedDownloader(url, {threads, retries, retryDelay})
+      .then(res => {
+        document.getElementById('B2Cancel').setAttribute('disabled', true)
+      })
 
     const cancelButton = document.getElementById('B2Cancel')
     cancelButton.removeAttribute('disabled')
