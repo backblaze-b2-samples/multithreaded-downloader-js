@@ -32,14 +32,17 @@
     <option>Select a file.</option>
   </select>
   <br/>
-  <input type="number" id="GDThreads" name="GDThreads" value="4">
-  <label for="GDThreads">Threads</label>
+  <input type="number" id="GDConcurrency" name="GDConcurrency" value="2">
+  <label for="GDConcurrency">Concurrent threads</label>
+  <br/>
+  <input type="number" id="GDChunkSize" name="GDChunkSize" value="100">
+  <label for="GDChunkSize">Chunk size in mb</label>
+  <br/>
+  <input type="number" id="GDRetryDelay" name="GDRetryDelay" value="1000">
+  <label for="GDRetryDelay">Retry delay in ms</label>
   <br/>
   <input type="number" id="GDRetries" name="GDRetries" value="2">
-  <label for="GDRetries">Retries</label>
-  <br/>
-  <input type="number" id="GDRetryDelay" name="GDRetryDelay" value="2000">
-  <label for="GDRetryDelay">Retry Delay</label>
+  <label for="GDRetries">Retry attempts</label>
   <br/>
   <button type="button" id="GDDownload">Download</button>
   <button type="button" id="GDCancel" disabled>Cancel</button>
@@ -47,6 +50,7 @@
   <div id="progressArea"></div>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
+  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
   <script defer src="../multiThreadedDownloader.js"></script>
   <script defer src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"

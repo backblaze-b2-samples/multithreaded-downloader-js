@@ -13,21 +13,18 @@
       const clusterNum = fileList.options[index].dataset.clusterNum
       const bucketName = fileList.options[index].dataset.bucketName
       const fileName = fileList.options[index].value
-      const threads = parseInt(document.getElementById('B2Threads').value)
+      const concurrency = parseInt(document.getElementById('B2Concurrency').value)
+      const chunkSize = parseInt(document.getElementById('B2ChunkSize').value)
       const retries = parseInt(document.getElementById('B2Retries').value)
       const retryDelay = parseInt(document.getElementById('B2RetryDelay').value)
 
-      downloadFile(clusterNum, bucketName, fileName, threads, retries, retryDelay)
+      downloadFile(clusterNum, bucketName, fileName, concurrency, chunkSize, retries, retryDelay)
     }
   }
 
-  function downloadFile (clusterNum, bucketName, fileName, threads, retries, retryDelay) {
+  function downloadFile (clusterNum, bucketName, fileName, concurrency, chunkSize, retries, retryDelay) {
     const url = new URL(`https://f${clusterNum}.backblazeb2.com/file/${bucketName}/${fileName}`)
-
-    const downloader = new MultiThreadedDownloader(url, {threads, retries, retryDelay})
-      .then(res => {
-        document.getElementById('B2Cancel').setAttribute('disabled', true)
-      })
+    const downloader = new MultiThreadedDownloader(url, {concurrency, chunkSize, retries, retryDelay})
 
     const cancelButton = document.getElementById('B2Cancel')
     cancelButton.removeAttribute('disabled')

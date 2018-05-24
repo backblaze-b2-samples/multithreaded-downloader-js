@@ -90,16 +90,14 @@
     const user = gapi.auth2.getAuthInstance().currentUser.get()
     const accessToken = user.getAuthResponse().access_token
     const headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
-    const threads = parseInt(document.getElementById('GDThreads').value)
+    const concurrency = parseInt(document.getElementById('GDConcurrency').value)
+    const chunkSize = parseInt(document.getElementById('GDChunkSize').value)
     const retries = parseInt(document.getElementById('GDRetries').value)
     const retryDelay = parseInt(document.getElementById('GDRetryDelay').value)
     const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileID}`)
     url.searchParams.set('alt', 'media')
 
-    const downloader = new MultiThreadedDownloader(url, {headers, threads, retries, retryDelay})
-      .then(() => {
-        document.getElementById('GDCancel').setAttribute('disabled', true)
-      })
+    const downloader = new MultiThreadedDownloader(url, {concurrency, chunkSize, retries, retryDelay, headers, fileName})
 
     const cancelButton = document.getElementById('GDCancel')
     cancelButton.removeAttribute('disabled')

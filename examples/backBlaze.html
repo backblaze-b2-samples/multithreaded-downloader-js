@@ -35,16 +35,20 @@
     <option data-cluster-num="002" data-bucket-name="FooBaz" value="install_backblaze_e949706fe14abade8.exe">install_backblaze_e949706fe14abade8.exe</option>
     <option data-cluster-num="002" data-bucket-name="FooBaz" value="SHORanger.pdf">SHORanger.pdf</option>
     <option data-cluster-num="002" data-bucket-name="FooBaz" value="dummy.dat">dummy.dat</option>
+    <option data-cluster-num="002" data-bucket-name="FooBaz" value="404.html">404.html</option>
   </select>
   <br/>
-  <input type="number" id="B2Threads" name="B2Threads" value="4">
-  <label for="B2Threads">Threads</label>
+  <input type="number" id="B2Concurrency" name="B2Concurrency" value="2">
+  <label for="B2Concurrency">Concurrent threads</label>
+  <br/>
+  <input type="number" id="B2ChunkSize" name="B2ChunkSize" value="100">
+  <label for="B2ChunkSize">Chunk size in mb</label>
+  <br/>
+  <input type="number" id="B2RetryDelay" name="B2RetryDelay" value="1000">
+  <label for="B2RetryDelay">Retry delay in ms</label>
   <br/>
   <input type="number" id="B2Retries" name="B2Retries" value="2">
-  <label for="B2Retries">Retries</label>
-  <br/>
-  <input type="number" id="B2RetryDelay" name="B2RetryDelay" value="2000">
-  <label for="B2RetryDelay">Retry Delay</label>
+  <label for="B2Retries">Retry attempts</label>
   <br/>
   <button type="button" id="B2Download">Download</button>
   <button type="button" id="B2Cancel" disabled>Cancel</button>
@@ -52,6 +56,7 @@
   <div id="progressArea"></div>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
+  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
   <script defer src="../multiThreadedDownloader.js"></script>
   <script defer src="backBlaze.js"></script>
 </body>

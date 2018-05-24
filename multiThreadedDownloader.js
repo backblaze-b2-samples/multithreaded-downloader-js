@@ -1,7 +1,13 @@
+// In cross-origin situations, the download attribute has to be combined with
+// the `Content-Disposition` HTTP header, specifically with the attachment
+// disposition type, to avoid the user being warned of possibly nefarious
+// activity. (This is to protect users from being made to download sensitive
+// personal or confidential information without their full understanding.)
 class MultiThreadedDownloader {
   constructor (url, options = {
-    threads: 4,
-    retries: 3,
+    concurrency: 2,
+    chunkSize: 4,
+    retries: 2,
     retryDelay: 1000,
     retryOn: []
   }) {
@@ -10,27 +16,31 @@ class MultiThreadedDownloader {
       return
     }
 
+    Object.assign(this, options)
+
     this.url = url
-    this.pathname = url.pathname.split('/')
-    this.fileName = this.pathname[this.pathname.length - 1]
+    this.pathname = this.url.pathname.split('/')
+    this.fileName = this.fileName || this.pathname[this.pathname.length - 1]
     this.controller = new AbortController()
     this.progressElements = []
 
-    Object.assign(this, options)
+    // Convert mb -> bytes
+    this.chunkSize *= 1048576
 
     // "Access-Control-Expose-Headers: Content-Length" must be enabled for HEAD requests!
     return this.fetchRetry(url, {
       method: 'HEAD',
       mode: 'cors',
+      headers: this.headers,
       signal: this.controller.signal
-    }).then(this.onHeadResponse.bind(this))
-      .then(response => response.blob())
-      .then(blob => {
-        let link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = this.fileName
-        link.dispatchEvent(new MouseEvent('click'))
-      })
+    }).then(this.buildRangeRequests.bind(this))
+    // .then(response => response.blob())
+    // .then(blob => {
+    //   let link = document.createElement('a')
+    //   link.href = URL.createObjectURL(blob)
+    //   link.download = this.fileName
+    //   link.dispatchEvent(new MouseEvent('click'))
+    // })
   }
 
   supported () {
@@ -41,34 +51,84 @@ class MultiThreadedDownloader {
     }
   }
 
-  // Triggers when a HEAD request is successful. Returns a promise that fulfils into a new Response object
-  onHeadResponse (response) {
+  // Returns a promise that fulfils into a new Response object
+  buildRangeRequests (response) {
     // Google drive response headers are all lower case, B2's are not!
-    const contentLength = response.headers.get('Content-Length') || response.headers.get('content-length')
-    const chunkSize = Math.ceil(contentLength / this.threads)
-    const numChunks = Math.ceil(contentLength / chunkSize)
+    const contentLength = parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
+    this.numChunks = Math.ceil(contentLength / this.chunkSize)
 
-    // Build range requests
-    let promises = []
-    for (let i = 0; i < numChunks; i++) {
-      const headers = new Headers ()
-      headers.append('Range', `bytes=${i * chunkSize}-${(i * chunkSize) + chunkSize - 1}`)
-
-      promises.push(this.fetchRetry(this.url, {
-        headers: headers,
-        method: 'GET',
-        mode: 'cors',
-        signal: this.controller.signal
-      }).then(response => this.respondWithProgressMonitor({ chunk: i + 1 }, response)))
+    let chunkCount = 0
+    let headers = this.headers || new Headers()
+    const promiseProducer = function () {
+      // If there is work left to be done, return the next work item as a promise.
+      if (chunkCount < this.numChunks) {
+        headers.set('Range', `bytes=${chunkCount * this.chunkSize}-${(chunkCount * this.chunkSize) + this.chunkSize - 1}`)
+        chunkCount++
+        return this.fetchRetry(this.url, {
+          headers: headers,
+          method: 'GET',
+          mode: 'cors',
+          signal: this.controller.signal
+        })
+        // .then(response => this.respondWithProgressMonitor({ chunk: chunkCount + 1 }, response))
+      }
+      // Otherwise, return null to indicate that all promises have been created.
+      return null
     }
 
-    const headers = new Headers(response.headers)
-    headers.append('Content-Disposition', `attachment; filename="${this.fileName}"`)
+    const pool = new PromisePool(promiseProducer.bind(this), this.concurrency)
+    let responses = []
 
-    // Map respones to arrayBuffers, reduce to single arrayBuffer for final response
-    return Promise.all(promises)
-      .then(responses => Promise.all(responses.map(res => res.arrayBuffer())))
-      .then(buffers => new Response(buffers.reduce(this.concatArrayBuffer, new Uint8Array()), {headers: headers}))
+    pool.addEventListener('fulfilled', async function (event) {
+      responses.push(event.data.result)
+    })
+
+    pool.addEventListener('rejected', function (event) {
+      console.log('Rejected: ' + event.data.error.message)
+    })
+
+    const self = this
+    const responseHeaders = new Headers(response.headers)
+    responseHeaders.append('Content-Disposition', `attachment; filename="${this.fileName}"`)
+
+    pool.start()
+      .then(function () {
+        console.log('All promises fulfilled')
+        Promise.all(responses.map(response => response.arrayBuffer()))
+          .then(buffers => new Response(buffers.reduce(self.concatTypedArray, new Uint8Array()), {responseHeaders}))
+          .then(response => response.blob())
+          .then(blob => {
+            let link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.download = self.fileName
+            link.dispatchEvent(new MouseEvent('click'))
+          })
+      }, function (error) {
+        console.log('Some promise rejected: ' + error.message)
+      })
+
+    // Build range requests
+    // let promises = []
+    // let headers = this.headers || new Headers()
+    // for (let chunkCount = 0; chunkCount < this.numChunks; chunkCount++) {
+    //   headers.set('Range', `bytes=${chunkCount * this.chunkSize}-${(chunkCount * this.chunkSize) + this.chunkSize - 1}`)
+    //   promises.push(this.fetchRetry(this.url, {
+    //     headers: headers,
+    //     method: 'GET',
+    //     mode: 'cors',
+    //     signal: this.controller.signal
+    //   })
+    //     // .then(response => this.respondWithProgressMonitor({ chunk: chunkCount + 1 }, response))
+    //   )
+    // }
+    //
+    // const responseHeaders = new Headers(response.headers)
+    // responseHeaders.append('Content-Disposition', `attachment; filename="${this.fileName}"`)
+    //
+    // // Map respones to arrayBuffers, reduce to single arrayBuffer for final response
+    // return Promise.all(promises)
+    //   .then(responses => Promise.all(responses.map(response => response.arrayBuffer())))
+    //   .then(buffers => new Response(buffers.reduce(this.concatTypedArray, new Uint8Array()), {responseHeaders}))
   }
 
   fetchRetry (url, init) {
@@ -108,29 +168,18 @@ class MultiThreadedDownloader {
   }
 
   // Concat two ArrayBuffers
-  concatArrayBuffer (ab1, ab2) {
-    const tmp = new Uint8Array(ab1.byteLength + ab2.byteLength)
-    tmp.set(new Uint8Array(ab1), 0)
-    tmp.set(new Uint8Array(ab2), ab1.byteLength)
-    return tmp.buffer
-  }
-
-  progress ({loaded, total, chunk, url, els}) {
-    // if (!this.progressElements[url + chunk]) {
-    if (!els[url + chunk]) {
-      let el = document.createElement('progress')
-      el.classList.add('progressBar')
-      els[url + chunk] = el
-      document.getElementById('progressArea').appendChild(el)
-    }
-    els[url + chunk].value = loaded / total
+  concatTypedArray (array1, array2) {
+    const temp = new Uint8Array(array1.byteLength + array2.byteLength)
+    temp.set(new Uint8Array(array1), 0)
+    temp.set(new Uint8Array(array2), array1.byteLength)
+    return temp.buffer
   }
 
   respondWithProgressMonitor (options, response) {
     const contentLength = response.headers.get('content-length')
     const total = parseInt(contentLength, 10)
     const reader = response.body.getReader()
-    const progress = this.progress
+    const updateProgress = this.updateProgress
     const els = this.progressElements
     let loaded = 0
 
@@ -148,7 +197,7 @@ class MultiThreadedDownloader {
 
             controller.enqueue(value)
             loaded += value.byteLength
-            progress({loaded, total, chunk: options.chunk, url: response.url, els})
+            updateProgress({loaded, total, chunk: options.chunk, url: response.url, els})
             read()
           }).catch(error => {
             // error only typically occurs if network fails mid-download
@@ -165,41 +214,14 @@ class MultiThreadedDownloader {
     }))
   }
 
-  // createWriteStream (fileName, queuingStrategy, fileSize) {
-  //    normalize arguments
-  //   if (Number.isFinite(queuingStrategy)) {
-  //     [fileSize, queuingStrategy] = [queuingStrategy, fileSize]
-  //   }
-  //
-  //   this.fileName = fileName
-  //   this.fileSize = fileSize
-  //   this.queuingStrategy = queuingStrategy
-  //
-  //   return new window.WritableStream({
-  //     start (controller) {
-  //        is called immediately, and should perform any actions necessary to
-  //        acquire access to the underlying sink. If the process is asynchronous,
-  //        it can return a promise to signal success or failure.
-  //        return setupMessageChannel()
-  //     },
-  //     write (chunk) {
-  //        is called when a new chunk of data is ready to be written to the
-  //        underlying sink. It can return a promise to signal success or failure
-  //        of the write operation. The stream implementation guarantees that
-  //        this method will be called only after previous writes have succeeded,
-  //        and never after close or abort is called.
-  //
-  //        TODO: Kind of important that service worker respond back when it has
-  //        been written. Otherwise we can't handle backpressure
-  //        messageChannel.port1.postMessage(chunk)
-  //     },
-  //     close () {
-  //        messageChannel.port1.postMessage('end')
-  //       console.log('All data successfully written!')
-  //     },
-  //     abort () {
-  //        messageChannel.port1.postMessage('abort')
-  //     }
-  //   }, queuingStrategy)
-  // }
+  updateProgress ({loaded, total, chunk, url, els}) {
+    // if (!this.progressElements[url + chunk]) {
+    if (!els[url + chunk]) {
+      let el = document.createElement('progress')
+      el.classList.add('progressBar')
+      els[url + chunk] = el
+      document.getElementById('progressArea').appendChild(el)
+    }
+    els[url + chunk].value = loaded / total
+  }
 }

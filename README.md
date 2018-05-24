@@ -28,19 +28,29 @@ This project is under development.
 
 The B2 bucket must have these CORS rules:
 ```
-        [{
-          "corsRuleName": "someName",
-          "allowedOrigins": ["*"],
-          "allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],
-          "allowedHeaders": ["*"],
-          "exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],
-          "maxAgeSeconds": 10240
-        }]
+[{
+  "corsRuleName": "someName",
+  "allowedOrigins": [
+    "*"
+  ],
+  "allowedOperations": [
+    "b2_download_file_by_id",
+    "b2_download_file_by_name"
+  ],
+  "allowedHeaders": [
+    "*"
+  ],
+  "exposeHeaders": [
+    "Access-Control-Allow-Origin",
+    "Content-Length"
+  ],
+  "maxAgeSeconds": 10240
+}]
 ```
 
 If using the command line tool, remember to escape JSON with single quotes:
 ```
-        '[{"corsRuleName": "someName","allowedOrigins": ["*"],"allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],"allowedHeaders": ["*"],"exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],"maxAgeSeconds": 10240}]'
+'[{"corsRuleName": "someName","allowedOrigins": ["*"],"allowedOperations": ["b2_download_file_by_id", "b2_download_file_by_name"],"allowedHeaders": ["*"],"exposeHeaders": ["Access-Control-Allow-Origin", "Content-Length"],"maxAgeSeconds": 10240}]'
 ```
 
 ### Todo:
@@ -57,6 +67,7 @@ If using the command line tool, remember to escape JSON with single quotes:
 
 ### Thanks:
 
+-   [es6-promise-pool](https://github.com/timdp/es6-promise-pool)
 -   [fetch-retry](https://github.com/jonbern/fetch-retry)
 -   [fetch-progress-indicators](https://github.com/AnthumChris/fetch-progress-indicators)
 -   [StreamSaver](https://github.com/jimmywarting/StreamSaver.js)
