@@ -1,36 +1,58 @@
 (() => {
-  document.getElementById('B2Download').onclick = event => {
-    const fileList = document.getElementById('B2FileList')
+  const chunkSizeType = document.getElementById('chunkSizeType')
+  const chunkSizeInput = document.getElementById('chunkSize')
+  const threadsType = document.getElementById('threadsType')
+  const threadsInput = document.getElementById('threads')
+  const retryDelayInput = document.getElementById('retryDelay')
+  const retriesInput = document.getElementById('retries')
+  const fileList = document.getElementById('fileList')
+  const downloadButton = document.getElementById('downloadButton')
+  const cancelButton = document.getElementById('cancelButton')
+  let reqType = 'chunkSize'
+
+  chunkSizeType.onclick = () => {
+    reqType = 'chunkSize'
+    threadsInput.disabled = true
+    chunkSizeInput.disabled = false
+  }
+
+  threadsType.onclick = () => {
+    reqType = 'threads'
+    chunkSizeInput.disabled = true
+    threadsInput.disabled = false
+  }
+
+  downloadButton.onclick = () => {
     const index = fileList.options.selectedIndex
 
     if (index > 0) {
-      // Clear out any progress elements
-      let el = document.getElementById('progressArea')
-      while (el.firstChild) {
-        el.removeChild(el.firstChild)
-      }
-
       const clusterNum = fileList.options[index].dataset.clusterNum
       const bucketName = fileList.options[index].dataset.bucketName
       const fileName = fileList.options[index].value
-      const concurrency = parseInt(document.getElementById('B2Concurrency').value)
-      const chunkSize = parseInt(document.getElementById('B2ChunkSize').value)
-      const retries = parseInt(document.getElementById('B2Retries').value)
-      const retryDelay = parseInt(document.getElementById('B2RetryDelay').value)
+      const chunkSize = parseInt(chunkSizeInput.value)
+      const threads = parseInt(threadsInput.value)
+      const retryDelay = parseInt(retryDelayInput.value)
+      const retries = parseInt(retriesInput.value)
 
-      downloadFile(clusterNum, bucketName, fileName, concurrency, chunkSize, retries, retryDelay)
+      downloadFile({clusterNum, bucketName, fileName, chunkSize, threads, retries, retryDelay, reqType})
     }
   }
 
-  function downloadFile (clusterNum, bucketName, fileName, concurrency, chunkSize, retries, retryDelay) {
-    const url = new URL(`https://f${clusterNum}.backblazeb2.com/file/${bucketName}/${fileName}`)
-    const downloader = new MultiThreadedDownloader(url, {concurrency, chunkSize, retries, retryDelay})
+  function downloadFile (options) {
+    options.controller = new AbortController()
+    const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
 
-    const cancelButton = document.getElementById('B2Cancel')
-    cancelButton.removeAttribute('disabled')
-    cancelButton.onclick = event => {
-      downloader.controller.abort()
+    new MultiThreadedDownloader(url, options).then(() => {
       cancelButton.setAttribute('disabled', true)
+      downloadButton.removeAttribute('disabled')
+    })
+
+    downloadButton.setAttribute('disabled', true)
+    cancelButton.removeAttribute('disabled')
+    cancelButton.onclick = () => {
+      cancelButton.setAttribute('disabled', true)
+      downloadButton.removeAttribute('disabled')
+      options.controller.abort()
     }
   }
 })()

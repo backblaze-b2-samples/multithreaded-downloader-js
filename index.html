@@ -5,6 +5,12 @@
   <meta charset="utf-8">
   <title>Multi Threaded Downloader</title>
   <style>.github-corner:hover .octo-arm{animation: octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%, 100%{transform: rotate(0)}20%, 60%{transform: rotate(-25deg)}40%, 80%{transform: rotate(10deg)}}@media (max-width: 500px){.github-corner:hover .octo-arm{animation: none}.github-corner .octo-arm{animation: octocat-wave 560ms ease-in-out}.github-corner-text{display: none;}.github-corner svg{height: 50px; width: 50px;}}</style>
+  <style>
+    main {
+      max-width: 768px;
+      margin: 0 auto;
+    }
+  </style>
 </head>
 
 <body>
@@ -16,32 +22,23 @@
     </svg>
   </a>
 
-  <h1>Multi Threaded Downloader</h1>
-  <p>A browser based multithreaded downloader implemented in vanilla Javascript.</p>
-  <p>Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder.</p>
-  <ul>
-    <li>100% client side JavaScript, no plugins or proxy required</li>
-    <li>Service worker intercepts all fetch requests with a "threads" url parameter</li>
-    <li>Sends a HTTP HEAD request to get the file's content-length</li>
-    <li>Sends multiple HTTP GET requests with range headers</li>
-    <li>Concatenates range responses into a single response</li>
-    <li>Respose triggers download with <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#attr-download">a[download]</a></li>
-    <li>Retry on fail or specific HTTP status codes (503 Service Unavailable)</li>
+  <main>
+    <h1>Multi Threaded Downloader</h1>
+    <p>A browser based multithreaded downloader implemented in vanilla Javascript.</p>
+    <p>Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder.</p>
+    <ul>
+      <li>100% client side JavaScript, no plugins or proxy required</li>
+      <li>Sends a HTTP HEAD request to get the file's content-length</li>
+      <li>Sends multiple HTTP GET requests with range headers</li>
+      <li>Concatenates range responses into a single response</li>
+      <li>Respose triggers download with <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#attr-download">a[download]</a></li>
+      <li>Retry on fail or on specific HTTP status codes <em><small>(503 Service Unavailable)</small></em></li>
+    </ul>
     <br/>
-    <li>Accepted url parameters:
-      <ul>
-        <li>threads: number of concurrent requests to use</li>
-        <li>retries: number of time to retry this request</li>
-        <li>retryDelay: ms delay before a retry</li></li>
-        <li>retryOn: array of HTTP status codes that will specifically trigger a retry</li>
-        <em><small>ie: "?threads=8&retries=3&retryDelay=1000&retryOn=503"</small></em>
-      </ul>
-    </li>
-  </ul>
-  <br/>
-  <a href="examples/backBlaze.html">BackBlaze B2 Demo</a>
-  <br/>
-  <a href="examples/googleDrive.html">Google Drive Demo</a>
+    <a href="examples/backBlaze.html">BackBlaze B2 Demo</a>
+    <br/>
+    <a href="examples/googleDrive.html">Google Drive Demo</a>
+  </main>
 </body>
 
 </html>

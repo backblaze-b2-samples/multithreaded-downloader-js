@@ -1,4 +1,30 @@
 (() => {
+  const ui = document.getElementById('ui')
+  const chunkSizeType = document.getElementById('chunkSizeType')
+  const chunkSizeInput = document.getElementById('chunkSize')
+  const threadsType = document.getElementById('threadsType')
+  const threadsInput = document.getElementById('threads')
+  const retryDelayInput = document.getElementById('retryDelay')
+  const retriesInput = document.getElementById('retries')
+  const fileList = document.getElementById('fileList')
+  const downloadButton = document.getElementById('downloadButton')
+  const cancelButton = document.getElementById('cancelButton')
+  const signinButton = document.getElementById('signin-button')
+  const signoutButton = document.getElementById('signout-button')
+  let reqType = 'chunkSize'
+
+  chunkSizeType.onclick = () => {
+    reqType = 'chunkSize'
+    threadsInput.disabled = true
+    chunkSizeInput.disabled = false
+  }
+
+  threadsType.onclick = () => {
+    reqType = 'threads'
+    chunkSizeInput.disabled = true
+    threadsInput.disabled = false
+  }
+
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
     gapi.load('client:auth2', () => {
@@ -18,12 +44,10 @@
         // Handle the initial sign-in state.
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get())
 
-        let signinButton = document.getElementById('signin-button')
         signinButton.onclick = () => {
           gapi.auth2.getAuthInstance().signIn()
         }
 
-        let signoutButton = document.getElementById('signout-button')
         signoutButton.onclick = () => {
           gapi.auth2.getAuthInstance().signOut()
         }
@@ -31,20 +55,17 @@
     })
   }
 
-  // Called when the signed in status changes, to update the UI appropriately. After a sign-in, the API is called.
+  // Called when the signed in status changes, to update the UI appropriately.
   function updateSigninStatus (isSignedIn) {
-    let signinButton = document.getElementById('signin-button')
-    let signoutButton = document.getElementById('signout-button')
-    let fileList = document.getElementById('GDFileList')
     if (isSignedIn) {
       signinButton.style.display = 'none'
       signoutButton.style.display = 'block'
-      fileList.style.display = 'block'
+      ui.style.display = 'block'
       listFiles()
     } else {
       signinButton.style.display = 'block'
       signoutButton.style.display = 'none'
-      fileList.style.display = 'none'
+      ui.style.display = 'none'
     }
   }
 
@@ -59,14 +80,17 @@
           }
         }
 
-        const downloadButton = document.getElementById('GDDownload')
         downloadButton.onclick = (event) => {
-          let fileList = document.getElementById('GDFileList')
           let index = fileList.options.selectedIndex
-          let fileID = fileList.options[index].value
-          let fileName = fileList.options[index].innerText
           if (index > 0) {
-            downloadFile(fileID, fileName)
+            const fileID = fileList.options[index].value
+            const fileName = fileList.options[index].innerText
+            const chunkSize = parseInt(chunkSizeInput.value)
+            const threads = parseInt(threadsInput.value)
+            const retryDelay = parseInt(retryDelayInput.value)
+            const retries = parseInt(retriesInput.value)
+
+            downloadFile({fileID, fileName, chunkSize, threads, retries, retryDelay, reqType})
           }
         }
       } else {
@@ -80,30 +104,30 @@
     option.value = value
     option.innerText = text
 
-    let fileList = document.getElementById('GDFileList')
     fileList.appendChild(option)
   }
 
   // https://developers.google.com/drive/v3/web/manage-downloads
-  function downloadFile (fileID, fileName) {
-    // https://developers.google.com/api-client-library/javascript/features/cors
+  // https://developers.google.com/api-client-library/javascript/features/cors
+  function downloadFile (options) {
     const user = gapi.auth2.getAuthInstance().currentUser.get()
     const accessToken = user.getAuthResponse().access_token
-    const headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
-    const concurrency = parseInt(document.getElementById('GDConcurrency').value)
-    const chunkSize = parseInt(document.getElementById('GDChunkSize').value)
-    const retries = parseInt(document.getElementById('GDRetries').value)
-    const retryDelay = parseInt(document.getElementById('GDRetryDelay').value)
-    const url = new URL(`https://www.googleapis.com/drive/v3/files/${fileID}`)
-    url.searchParams.set('alt', 'media')
 
-    const downloader = new MultiThreadedDownloader(url, {concurrency, chunkSize, retries, retryDelay, headers, fileName})
+    options.controller = new AbortController()
+    options.headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
+    const url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
 
-    const cancelButton = document.getElementById('GDCancel')
-    cancelButton.removeAttribute('disabled')
-    cancelButton.onclick = event => {
-      downloader.controller.abort()
+    new MultiThreadedDownloader(url, options).then(() => {
       cancelButton.setAttribute('disabled', true)
+      downloadButton.removeAttribute('disabled')
+    })
+
+    cancelButton.removeAttribute('disabled')
+    downloadButton.setAttribute('disabled', true)
+    cancelButton.onclick = () => {
+      downloadButton.removeAttribute('disabled')
+      cancelButton.setAttribute('disabled', true)
+      options.controller.abort()
     }
   }
 })()

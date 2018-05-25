@@ -6,11 +6,26 @@
   <title>Multi Threaded Downloader</title>
   <style>.github-corner:hover .octo-arm{animation: octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%, 100%{transform: rotate(0)}20%, 60%{transform: rotate(-25deg)}40%, 80%{transform: rotate(10deg)}}@media (max-width: 500px){.github-corner:hover .octo-arm{animation: none}.github-corner .octo-arm{animation: octocat-wave 560ms ease-in-out}.github-corner-text{display: none;}.github-corner svg{height: 50px; width: 50px;}}</style>
   <style>
-    .progressBar {
-      display: block;
-      height: 1em;
-      margin: .5em;
-      width: 50%;
+    main {
+      max-width: 512px;
+      margin: 0 auto;
+    }
+    .split {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .full, .split > * {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 1rem;
+    }
+    input[type="radio"] {
+      margin: 0;
+    }
+    #ui {
+      display: none;
     }
   </style>
 </head>
@@ -24,33 +39,44 @@
     </svg>
   </a>
 
-  <h2>Google Drive Demo</h2>
-  <button id="signin-button" style="display: none;">Sign In</button>
-  <button id="signout-button" style="display: none;">Sign Out</button>
-  <br/>
-  <select id="GDFileList" name="GDFileList">
-    <option>Select a file.</option>
-  </select>
-  <br/>
-  <input type="number" id="GDConcurrency" name="GDConcurrency" value="2">
-  <label for="GDConcurrency">Concurrent threads</label>
-  <br/>
-  <input type="number" id="GDChunkSize" name="GDChunkSize" value="100">
-  <label for="GDChunkSize">Chunk size in mb</label>
-  <br/>
-  <input type="number" id="GDRetryDelay" name="GDRetryDelay" value="1000">
-  <label for="GDRetryDelay">Retry delay in ms</label>
-  <br/>
-  <input type="number" id="GDRetries" name="GDRetries" value="2">
-  <label for="GDRetries">Retry attempts</label>
-  <br/>
-  <button type="button" id="GDDownload">Download</button>
-  <button type="button" id="GDCancel" disabled>Cancel</button>
-  <br/>
-  <div id="progressArea"></div>
+  <main>
+    <h2>Google Drive Demo</h2>
+    <div class="split">
+      <button id="signin-button" style="display: none;">Sign In</button>
+      <button id="signout-button" style="display: none;">Sign Out</button>
+    </div>
+    <div id="ui">
+      <div class="split">
+        <input type="radio" id="chunkSizeType" name="reqType" value="chunkSize" checked>
+        <div>
+          <label for="chunkSize">Chunk size in mb</label>
+          <input type="number" id="chunkSize" name="chunkSize" value="100">
+        </div>
+        <input type="radio" id="threadsType" name="reqType" value="threads">
+        <div>
+          <label for="threads">Number of threads</label>
+          <input type="number" id="threads" name="threads" value="4" disabled>
+        </div>
+      </div>
+      <div class="full">
+        <label for="retryDelay">Retry delay in ms</label>
+        <input type="number" id="retryDelay" name="retryDelay" value="1000">
+      </div>
+      <div class="full">
+        <label for="retries">Retry attempts</label>
+        <input type="number" id="retries" name="retries" value="2">
+      </div>
+      <div class="full">
+        <select id="fileList" name="fileList">
+          <option>Select a file.</option>
+        </select>
+      </div>
+      <button type="button" id="downloadButton">Download</button>
+      <button type="button" id="cancelButton" disabled>Cancel</button>
+    </div>
+  </main>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
   <script defer src="../multiThreadedDownloader.js"></script>
   <script defer src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
