@@ -1,26 +1,13 @@
 (() => {
-  const chunkSizeType = document.getElementById('chunkSizeType')
   const chunkSizeInput = document.getElementById('chunkSize')
-  const threadsType = document.getElementById('threadsType')
   const threadsInput = document.getElementById('threads')
   const retryDelayInput = document.getElementById('retryDelay')
   const retriesInput = document.getElementById('retries')
   const fileList = document.getElementById('fileList')
   const downloadButton = document.getElementById('downloadButton')
   const cancelButton = document.getElementById('cancelButton')
-  let reqType = 'chunkSize'
-
-  chunkSizeType.onclick = () => {
-    reqType = 'chunkSize'
-    threadsInput.disabled = true
-    chunkSizeInput.disabled = false
-  }
-
-  threadsType.onclick = () => {
-    reqType = 'threads'
-    chunkSizeInput.disabled = true
-    threadsInput.disabled = false
-  }
+  const progressArea = document.getElementById('progressArea')
+  let progressElements = []
 
   downloadButton.onclick = () => {
     const index = fileList.options.selectedIndex
@@ -34,25 +21,48 @@
       const retryDelay = parseInt(retryDelayInput.value)
       const retries = parseInt(retriesInput.value)
 
-      downloadFile({clusterNum, bucketName, fileName, chunkSize, threads, retries, retryDelay, reqType})
+      downloadFile({clusterNum, bucketName, fileName, chunkSize, threads, retries, retryDelay})
     }
   }
 
   function downloadFile (options) {
-    options.controller = new AbortController()
     const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
-
-    new MultiThreadedDownloader(url, options).then(() => {
-      cancelButton.setAttribute('disabled', true)
-      downloadButton.removeAttribute('disabled')
-    })
+    const multiThread = new MultiThread(options, onProgress, onFinish)
 
     downloadButton.setAttribute('disabled', true)
     cancelButton.removeAttribute('disabled')
+
     cancelButton.onclick = () => {
       cancelButton.setAttribute('disabled', true)
       downloadButton.removeAttribute('disabled')
-      options.controller.abort()
+      multiThread.cancel()
+    }
+
+    multiThread.fetch(url, options)
+  }
+
+  function onFinish () {
+    cancelButton.setAttribute('disabled', true)
+    downloadButton.removeAttribute('disabled')
+  }
+
+  function onProgress ({loaded, contentLength, id}) {
+    if (!progressElements[id]) {
+      progressElements[id] = document.createElement('progress')
+      progressElements[id].value = 0
+      progressElements[id].max = 100
+      progressArea.appendChild(progressElements[id])
+    }
+
+    // handle divide-by-zero edge case when Content-Length=0
+    const percent = contentLength ? loaded / contentLength : 1
+
+    if (id === 1) {
+      console.log(loaded, contentLength)
+    }
+    progressElements[id].value = Math.round(percent * 100)
+    if (loaded === contentLength) {
+      console.log('Loaded 100%')
     }
   }
 })()

@@ -1,0 +1,72 @@
+input[type="radio"] {
+  margin: 0;
+}
+
+img {
+  margin: 0 auto;
+  margin-bottom: 3rem;
+  display: inline-block;
+  width: 100%;
+  max-width: 600px;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+progress {
+  display: block;
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+#progressArea {
+  margin-top: 1rem;
+}
+
+.full, .split>* {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.split {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.github-corner:hover .octo-arm {
+  animation: octocat-wave 560ms ease-in-out
+}
+
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0) }
+  20%, 60% { transform: rotate(-25deg) }
+  40%, 80% { transform: rotate(10deg) }
+}
+
+@media (max-width: 500px) {
+  .github-corner:hover .octo-arm {
+    animation: none
+  }
+  .github-corner .octo-arm {
+    animation: octocat-wave 560ms ease-in-out
+  }
+  .github-corner-text {
+    display: none;
+  }
+  .github-corner svg {
+    height: 50px;
+    width: 50px;
+  }
+}
+
+#ui {
+  display: none;
+}

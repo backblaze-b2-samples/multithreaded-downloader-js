@@ -4,30 +4,7 @@
 <head>
   <meta charset="utf-8">
   <title>Multi Threaded Downloader</title>
-  <style>.github-corner:hover .octo-arm{animation: octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%, 100%{transform: rotate(0)}20%, 60%{transform: rotate(-25deg)}40%, 80%{transform: rotate(10deg)}}@media (max-width: 500px){.github-corner:hover .octo-arm{animation: none}.github-corner .octo-arm{animation: octocat-wave 560ms ease-in-out}.github-corner-text{display: none;}.github-corner svg{height: 50px; width: 50px;}}</style>
-  <style>
-    main {
-      max-width: 512px;
-      margin: 0 auto;
-    }
-    .split {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-around;
-      align-items: center;
-    }
-    .full, .split > * {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 1rem;
-    }
-    input[type="radio"] {
-      margin: 0;
-    }
-    #ui {
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -46,17 +23,13 @@
       <button id="signout-button" style="display: none;">Sign Out</button>
     </div>
     <div id="ui">
-      <div class="split">
-        <input type="radio" id="chunkSizeType" name="reqType" value="chunkSize" checked>
-        <div>
-          <label for="chunkSize">Chunk size in mb</label>
-          <input type="number" id="chunkSize" name="chunkSize" value="100">
-        </div>
-        <input type="radio" id="threadsType" name="reqType" value="threads">
-        <div>
-          <label for="threads">Number of threads</label>
-          <input type="number" id="threads" name="threads" value="4" disabled>
-        </div>
+      <div class="full">
+        <label for="chunkSize">Chunk size in mb</label>
+        <input type="number" id="chunkSize" name="chunkSize" value="1">
+      </div>
+      <div class="full">
+        <label for="threads">Number of threads</label>
+        <input type="number" id="threads" name="threads" value="2">
       </div>
       <div class="full">
         <label for="retryDelay">Retry delay in ms</label>
@@ -74,10 +47,12 @@
       <button type="button" id="downloadButton">Download</button>
       <button type="button" id="cancelButton" disabled>Cancel</button>
     </div>
+    <div id="progressArea"></div>
   </main>
 
-  <!-- <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script> -->
-  <script defer src="../multiThreadedDownloader.js"></script>
+  <script defer src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
+  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
+  <script defer src="../MultiThread.js"></script>
   <script defer src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
