@@ -1,21 +1,11 @@
-input[type="radio"] {
-  margin: 0;
-}
-
-img {
-  margin: 0 auto;
-  margin-bottom: 3rem;
-  display: inline-block;
-  width: 100%;
-  max-width: 600px;
-  background: #000;
-  position: relative;
-  overflow: hidden;
+button {
+  width: 33%;
 }
 
 main {
-  max-width: 640px;
   margin: 0 auto;
+  max-width: 640px;
+  width: 80vw;
 }
 
 progress {
@@ -24,21 +14,18 @@ progress {
   width: 100%;
 }
 
-#progressArea {
-  margin-top: 1rem;
-}
-
-.full, .split>* {
+section {
   display: flex;
   flex-direction: column;
   margin-bottom: 1rem;
 }
 
-.split {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-  align-items: center;
+#progressArea {
+  margin-top: 1rem;
+}
+
+#ui, #signin-button, #signout-button {
+  display: none;
 }
 
 .github-corner:hover .octo-arm {
@@ -46,9 +33,15 @@ progress {
 }
 
 @keyframes octocat-wave {
-  0%, 100% { transform: rotate(0) }
-  20%, 60% { transform: rotate(-25deg) }
-  40%, 80% { transform: rotate(10deg) }
+  0%, 100% {
+    transform: rotate(0)
+  }
+  20%, 60% {
+    transform: rotate(-25deg)
+  }
+  40%, 80% {
+    transform: rotate(10deg)
+  }
 }
 
 @media (max-width: 500px) {
@@ -65,8 +58,4 @@ progress {
     height: 50px;
     width: 50px;
   }
-}
-
-#ui {
-  display: none;
 }

@@ -3,6 +3,7 @@
   const threadsInput = document.getElementById('threads')
   const retryDelayInput = document.getElementById('retryDelay')
   const retriesInput = document.getElementById('retries')
+  const retryOnInput = document.getElementById('retryOn')
   const fileList = document.getElementById('fileList')
   const downloadButton = document.getElementById('downloadButton')
   const cancelButton = document.getElementById('cancelButton')
@@ -15,13 +16,14 @@
     if (index > 0) {
       const clusterNum = fileList.options[index].dataset.clusterNum
       const bucketName = fileList.options[index].dataset.bucketName
-      const fileName = fileList.options[index].value
-      const chunkSize = parseInt(chunkSizeInput.value)
       const threads = parseInt(threadsInput.value)
-      const retryDelay = parseInt(retryDelayInput.value)
+      const chunkSize = parseInt(chunkSizeInput.value)
       const retries = parseInt(retriesInput.value)
+      const retryDelay = parseInt(retryDelayInput.value)
+      const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
+      const fileName = fileList.options[index].value
 
-      downloadFile({clusterNum, bucketName, fileName, chunkSize, threads, retries, retryDelay})
+      downloadFile({clusterNum, bucketName, threads, chunkSize, retries, retryDelay, retryOn, fileName})
     }
   }
 

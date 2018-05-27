@@ -18,42 +18,46 @@
 
   <main>
     <h2>Google Drive Demo</h2>
-    <div class="split">
-      <button id="signin-button" style="display: none;">Sign In</button>
-      <button id="signout-button" style="display: none;">Sign Out</button>
-    </div>
+    <section>
+      <button id="signin-button">Sign In</button>
+      <button id="signout-button">Sign Out</button>
+    </section>
     <div id="ui">
-      <div class="full">
-        <label for="chunkSize">Chunk size in mb</label>
-        <input type="number" id="chunkSize" name="chunkSize" value="100">
-      </div>
-      <div class="full">
-        <label for="threads">Number of threads</label>
+      <section>
+        <label for="threads">Number of concurrent threads</label>
         <input type="number" id="threads" name="threads" value="4">
-      </div>
-      <div class="full">
-        <label for="retryDelay">Retry delay in ms</label>
-        <input type="number" id="retryDelay" name="retryDelay" value="1000">
-      </div>
-      <div class="full">
+      </section>
+      <section>
+        <label for="chunkSize">Chunk size in MB</label>
+        <input type="number" id="chunkSize" name="chunkSize" value="4">
+      </section>
+      <section>
         <label for="retries">Retry attempts</label>
         <input type="number" id="retries" name="retries" value="2">
-      </div>
-      <div class="full">
+      </section>
+      <section>
+        <label for="retryDelay">Retry delay in ms</label>
+        <input type="number" id="retryDelay" name="retryDelay" value="1000">
+      </section>
+      <section>
+        <label for="retryOn">Retry on HTTP status codes</label>
+        <input type="text" id="retryOn" name="retryOn" value="400,403,408,429,500,503,504">
+      </section>
+      <section>
         <select id="fileList" name="fileList">
           <option>Select a file.</option>
         </select>
-      </div>
+      </section>
       <button type="button" id="downloadButton">Download</button>
       <button type="button" id="cancelButton" disabled>Cancel</button>
     </div>
     <div id="progressArea"></div>
   </main>
 
-  <script defer src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
-  <script defer src="../MultiThread.js"></script>
-  <script defer src="googleDrive.js"></script>
+  <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
+  <script src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
+  <script src="../MultiThread.js"></script>
+  <script src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()">

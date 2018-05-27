@@ -18,35 +18,38 @@
 
   <main>
     <h2>Backblaze B2 Demo</h2>
-    <div class="full">
-      <label for="chunkSize">Chunk size in mb</label>
-      <input type="number" id="chunkSize" name="chunkSize" value="100">
-    </div>
-    <div class="full">
-      <label for="threads">Number of threads</label>
+    <section>
+      <label for="threads">Number of concurrent threads</label>
       <input type="number" id="threads" name="threads" value="4">
-    </div>
-    <div class="full">
-      <label for="retryDelay">Retry delay in ms</label>
-      <input type="number" id="retryDelay" name="retryDelay" value="1000">
-    </div>
-    <div class="full">
+    </section>
+    <section>
+      <label for="chunkSize">Chunk size in MB</label>
+      <input type="number" id="chunkSize" name="chunkSize" value="10">
+    </section>
+    <section>
       <label for="retries">Retry attempts</label>
       <input type="number" id="retries" name="retries" value="2">
-    </div>
-    <div class="full">
+    </section>
+    <section>
+      <label for="retryDelay">Retry delay in ms</label>
+      <input type="number" id="retryDelay" name="retryDelay" value="1000">
+    </section>
+    <section>
+      <label for="retryOn">Retry on HTTP status codes</label>
+      <input type="text" id="retryOn" name="retryOn" value="400,403,408,429,500,503,504">
+    </section>
+    <section>
       <select id="fileList" name="fileList">
         <option>Select a file.</option>
-        <option data-cluster-num="000" data-bucket-name="nilayp" value="1GB.txt">1GB.txt</option>
-        <option data-cluster-num="000" data-bucket-name="nilayp" value="5GB.txt">5GB.txt</option>
-        <option data-cluster-num="000" data-bucket-name="nilayp" value="10GB.txt">10GB.txt</option>
-        <option data-cluster-num="000" data-bucket-name="nilayp" value="50GB.txt">50GB.txt</option>
-        <option data-cluster-num="002" data-bucket-name="FooBaz" value="install_backblaze_e949706fe14abade8.exe">install_backblaze_e949706fe14abade8.exe</option>
-        <option data-cluster-num="002" data-bucket-name="FooBaz" value="SHORanger.pdf">SHORanger.pdf</option>
-        <option data-cluster-num="002" data-bucket-name="FooBaz" value="dummy.dat">dummy.dat</option>
-        <option data-cluster-num="002" data-bucket-name="FooBaz" value="404.html">404.html</option>
+        <option data-cluster-num="000" data-bucket-name="nilayp" value="1GB.txt">nilayp/1GB.txt</option>
+        <option data-cluster-num="000" data-bucket-name="nilayp" value="5GB.txt">nilayp/5GB.txt</option>
+        <option data-cluster-num="000" data-bucket-name="nilayp" value="10GB.txt">nilayp/10GB.txt</option>
+        <option data-cluster-num="000" data-bucket-name="nilayp" value="50GB.txt">nilayp/50GB.txt</option>
+        <option data-cluster-num="002" data-bucket-name="FooBaz" value="hugeImage.jpg">FooBaz/hugeImage.jpg 17MB</option>
+        <option data-cluster-num="002" data-bucket-name="FooBaz" value="dummy.dat">FooBaz/dummy.dat 71MB</option>
+        <option data-cluster-num="002" data-bucket-name="FooBaz" value="404.html">404 test</option>
       </select>
-    </div>
+    </section>
     <button type="button" id="downloadButton">Download</button>
     <button type="button" id="cancelButton" disabled>Cancel</button>
     <div id="progressArea"></div>

@@ -1,5 +1,5 @@
 class MultiThread {
-  constructor (options, onProgress, onFinish) {
+  constructor (options = {}, onProgress = () => {}, onFinish = () => {}) {
     if (!this.supported()) {
       throw Error('Web Streams are not yet supported in this browser.')
     }
@@ -29,7 +29,6 @@ class MultiThread {
   // mimic native fetch() and return Promise
   fetch (url, init = {}) {
     this.url = (url instanceof Request) ? url : new Request(url)
-    this.buffer = new Uint8Array()
     this.controller = new AbortController()
     this._cancelRequested = false
     this.progressMeters = 0
@@ -46,10 +45,10 @@ class MultiThread {
   fetchRanges (response) {
     // Google drive response headers are all lower case, B2's are not!
     this.contentLength = parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
-
-    this.headResponse = response
     this.chunkSize *= 1048576 // Convert mb -> bytes
     this.numChunks = Math.ceil(this.contentLength / this.chunkSize)
+    this.buffer = new ArrayBuffer(this.contentLength)
+    this.bufferView = new Uint8Array(this.buffer)
 
     const self = this
     let chunkCount = 0
@@ -57,7 +56,9 @@ class MultiThread {
     const promiseProducer = function () {
       // If there is work left to be done, return the next work item as a promise.
       if (chunkCount < self.numChunks) {
-        headers.set('Range', `bytes=${chunkCount * self.chunkSize}-${(chunkCount * self.chunkSize) + self.chunkSize - 1}`)
+        const start = chunkCount * self.chunkSize
+        const end = start + self.chunkSize - 1
+        headers.set('Range', `bytes=${start}-${end}`)
         chunkCount++
 
         return self.fetchRetry(self.url, {
@@ -65,10 +66,13 @@ class MultiThread {
           method: 'GET',
           mode: 'cors',
           signal: self.controller.signal
+        }).then(response => {
+          // Content-Range header not exposed by default in CORS requests, so fake it.
+          return {response, contentRange: `bytes ${start}-${end}/${self.contentLength}`}
         })
           .then(self.concatStreams.bind(self))
-          // .then(this.monitorProgress.bind(this))
       }
+
       // Otherwise, return null to indicate that all promises have been created.
       return null
     }
@@ -84,47 +88,40 @@ class MultiThread {
     // })
 
     pool.start()
-      .then(function () {
-        // console.log('All promises fulfilled')
+      .then(() => {
+        // console.log('All promises fulfilled', response)
         self.downloadStream(response)
         self.onFinish()
       }, function (error) {
-        console.log('Some promise rejected: ' + error.message)
+        console.error(error)
       })
 
     // Return the original 'HEAD' response
     return response
   }
 
-  concatStreams (response) {
+  concatStreams ({response, contentRange}) {
+    contentRange = contentRange.split(' ')[1].split('/')[0]
+    const start = parseInt(contentRange.split('-')[0])
+    const end = Math.min(parseInt(contentRange.split('-')[1]), this.contentLength)
+
     // Map responses to arrayBuffers then reduce to single arrayBuffer for final response
     return response.arrayBuffer()
       .then(buffer => {
-        this.buffer = this.concatArrayBuffers(this.buffer, buffer)
+        this.bufferView.set(new Uint8Array(buffer), start)
         return new Response(response)
       })
+      // TODO: fix monitorProgress
       // .then(this.monitorProgress.bind(this))
   }
 
-  concatArrayBuffers (array1, array2) {
-    const temp = new Uint8Array(array1.byteLength + array2.byteLength)
-    temp.set(new Uint8Array(array1), 0)
-    temp.set(new Uint8Array(array2), array1.byteLength)
-    return temp.buffer
-  }
-
   downloadStream (response) {
-    // Add 'Content-Disposition' to the original response headers
-    const headers = new Headers(response.headers)
-    headers.append('Content-Disposition', `attachment; filename="${this.fileName}"`)
-
-    // The download attribute requires "Content-Disposition" HTTP header
     const link = document.createElement('a')
     link.href = URL.createObjectURL(new Blob([this.buffer]))
     link.download = this.fileName
     link.dispatchEvent(new MouseEvent('click'))
 
-    return response
+    return new Response(response)
   }
 
   fetchRetry (url, init) {
@@ -163,6 +160,7 @@ class MultiThread {
     })
   }
 
+  // TODO: fix monitorProgress
   monitorProgress (response) {
     // this occurs if cancel() was called before server responded (before fetch() Promise resolved)
     if (this._cancelRequested) {
@@ -184,21 +182,21 @@ class MultiThread {
 
         // Await resolution of first read() progress is sent for indicator accuracy
         read()
-        // self.onProgress({loaded: 0, contentLength, id: progressID})
+        self.onProgress({loaded: 0, total: self.contentLength, id: progressID})
 
         function read () {
           self._reader.read().then(({done, value}) => {
             if (done) {
               // ensure onProgress called when content-length=0
               if (self.contentLength === 0) {
-                self.onProgress({loaded, contentLength: self.contentLength, id: progressID})
+                self.onProgress({loaded, total: self.contentLength, id: progressID})
               }
               controller.close()
               return
             }
 
             loaded += value.byteLength
-            self.onProgress({loaded, contentLength: self.contentLength, id: progressID})
+            self.onProgress({loaded, total: self.contentLength, id: progressID})
             controller.enqueue(value)
             read()
           }).catch(error => {
