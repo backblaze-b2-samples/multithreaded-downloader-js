@@ -1,5 +1,5 @@
 (() => {
-  const chunkSizeInput = document.getElementById('chunkSize')
+  const rangeSizeInput = document.getElementById('rangeSize')
   const threadsInput = document.getElementById('threads')
   const retryDelayInput = document.getElementById('retryDelay')
   const retriesInput = document.getElementById('retries')
@@ -8,7 +8,6 @@
   const downloadButton = document.getElementById('downloadButton')
   const cancelButton = document.getElementById('cancelButton')
   const progressArea = document.getElementById('progressArea')
-  let progressElements = []
 
   downloadButton.onclick = () => {
     const index = fileList.options.selectedIndex
@@ -17,19 +16,26 @@
       const clusterNum = fileList.options[index].dataset.clusterNum
       const bucketName = fileList.options[index].dataset.bucketName
       const threads = parseInt(threadsInput.value)
-      const chunkSize = parseInt(chunkSizeInput.value)
+      const rangeSize = parseInt(rangeSizeInput.value)
       const retries = parseInt(retriesInput.value)
       const retryDelay = parseInt(retryDelayInput.value)
       const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
       const fileName = fileList.options[index].value
 
-      downloadFile({clusterNum, bucketName, threads, chunkSize, retries, retryDelay, retryOn, fileName})
+      downloadFile({clusterNum, bucketName, threads, rangeSize, retries, retryDelay, retryOn, fileName})
     }
   }
 
   function downloadFile (options) {
+    let progressElements = []
+    // Clear out any old progress elements left in the DOM
+    while (progressArea.firstChild) {
+      progressArea.removeChild(progressArea.firstChild)
+    }
+
     const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
     const multiThread = new MultiThread(options, onProgress, onFinish)
+    multiThread.fetch(url, options)
 
     downloadButton.setAttribute('disabled', true)
     cancelButton.removeAttribute('disabled')
@@ -40,31 +46,23 @@
       multiThread.cancel()
     }
 
-    multiThread.fetch(url, options)
-  }
-
-  function onFinish () {
-    cancelButton.setAttribute('disabled', true)
-    downloadButton.removeAttribute('disabled')
-  }
-
-  function onProgress ({loaded, contentLength, id}) {
-    if (!progressElements[id]) {
-      progressElements[id] = document.createElement('progress')
-      progressElements[id].value = 0
-      progressElements[id].max = 100
-      progressArea.appendChild(progressElements[id])
+    function onFinish () {
+      cancelButton.setAttribute('disabled', true)
+      downloadButton.removeAttribute('disabled')
     }
 
-    // handle divide-by-zero edge case when Content-Length=0
-    const percent = contentLength ? loaded / contentLength : 1
+    function onProgress ({id, contentLength, loaded}) {
+      if (!progressElements[id]) {
+        progressElements[id] = document.createElement('progress')
+        progressElements[id].value = 0
+        progressElements[id].max = 100
+        progressArea.appendChild(progressElements[id])
+      }
 
-    if (id === 1) {
-      console.log(loaded, contentLength)
-    }
-    progressElements[id].value = Math.round(percent * 100)
-    if (loaded === contentLength) {
-      console.log('Loaded 100%')
+      // handle divide-by-zero edge case when Content-Length=0
+      const percent = contentLength ? loaded / contentLength : 1
+
+      progressElements[id].value = Math.round(percent * 100)
     }
   }
 })()

@@ -1,0 +1,15 @@
+{
+  "name": "StreamSaver.js",
+  "homepage": "https://github.com/jimmywarting/StreamSaver.js",
+  "version": "1.0.0",
+  "_release": "1.0.0",
+  "_resolution": {
+    "type": "version",
+    "tag": "1.0.0",
+    "commit": "46c69adc4bb0749c60b201e33f49e27c592ceb30"
+  },
+  "_source": "https://github.com/jimmywarting/StreamSaver.js.git",
+  "_target": "^1.0.0",
+  "_originalSource": "https://github.com/jimmywarting/StreamSaver.js.git",
+  "_direct": true
+}

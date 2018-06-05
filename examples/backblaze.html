@@ -23,8 +23,8 @@
       <input type="number" id="threads" name="threads" value="4">
     </section>
     <section>
-      <label for="chunkSize">Chunk size in MB</label>
-      <input type="number" id="chunkSize" name="chunkSize" value="10">
+      <label for="chunkSize">Range size in MB</label>
+      <input type="number" id="rangeSize" name="rangeSize" value="4">
     </section>
     <section>
       <label for="retries">Retry attempts</label>
@@ -56,7 +56,7 @@
   </main>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="../bower_components/es6-promise-pool/es6-promise-pool.js"></script>
+  <script defer src="../bower_components/StreamSaver.js/StreamSaver.js"></script>
   <script defer src="../MultiThread.js"></script>
   <script defer src="backblaze.js"></script>
 </body>

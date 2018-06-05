@@ -5,8 +5,9 @@ class MultiThread {
     }
 
     Object.assign(this, options)
-    this.onProgress = onProgress.bind(this)
     this.onFinish = onFinish.bind(this)
+    this.onProgress = onProgress.bind(this)
+
   }
 
   supported () {
@@ -18,116 +19,145 @@ class MultiThread {
   }
 
   cancel () {
-    this._cancelRequested = true
     this.controller.abort()
-    if (this._reader) {
-      return this._reader.cancel()
+    if (this.writer) {
+      this.writer.close()
     }
     return Promise.resolve()
   }
 
-  // mimic native fetch() and return Promise
+  // HEAD request, range requests, and trigger download
   fetch (url, init = {}) {
-    this.url = (url instanceof Request) ? url : new Request(url)
+    this.url = new URL(url)
     this.controller = new AbortController()
-    this._cancelRequested = false
-    this.progressMeters = 0
 
     return this.fetchRetry(this.url, {
       method: 'HEAD',
       mode: 'cors',
       headers: init.headers,
       signal: this.controller.signal
-    }).then(this.fetchRanges.bind(this))
+    }).then(response => {
+      this.pending = []
+      this.rangeCount = 0
+      this.rangeSize *= 1048576 // Convert mb -> bytes
+      this.contentLength = this.getContentLength(response)
+      this.totalRanges = Math.ceil(this.contentLength / this.rangeSize)
+      this.fileStream = streamSaver.createWriteStream(this.fileName, this.contentLength)
+      this.writer = this.fileStream.getWriter()
+      this.fetchRange().then(this.transferPending.bind(this))
+    })
   }
 
-  // Returns a promise that fulfils into a new Response object
-  fetchRanges (response) {
-    // Google drive response headers are all lower case, B2's are not!
-    this.contentLength = parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
-    this.chunkSize *= 1048576 // Convert mb -> bytes
-    this.numChunks = Math.ceil(this.contentLength / this.chunkSize)
-    this.buffer = new ArrayBuffer(this.contentLength)
-    this.bufferView = new Uint8Array(this.buffer)
+  fetchRange () {
+    if (this.rangeCount < this.totalRanges) {
+      // Passthrough this.headers to each range request (for GDrive auth)
+      const headers = new Headers(this.headers)
+      const start = this.rangeCount * this.rangeSize
+      const end = start + this.rangeSize - 1
+      headers.set('Range', `bytes=${start}-${end}`)
 
-    const self = this
-    let chunkCount = 0
-    let headers = this.headers || new Headers()
-    const promiseProducer = function () {
-      // If there is work left to be done, return the next work item as a promise.
-      if (chunkCount < self.numChunks) {
-        const start = chunkCount * self.chunkSize
-        const end = start + self.chunkSize - 1
-        headers.set('Range', `bytes=${start}-${end}`)
-        chunkCount++
-
-        return self.fetchRetry(self.url, {
-          headers: headers,
-          method: 'GET',
-          mode: 'cors',
-          signal: self.controller.signal
-        }).then(response => {
-          // Content-Range header not exposed by default in CORS requests, so fake it.
-          return {response, contentRange: `bytes ${start}-${end}/${self.contentLength}`}
-        })
-          .then(self.concatStreams.bind(self))
+      let range = {
+        id: this.rangeCount,
+        headers: headers,
+        loaded: 0
       }
+      this.rangeCount++
 
-      // Otherwise, return null to indicate that all promises have been created.
-      return null
+      return this.fetchRetry(this.url, {
+        headers: range.headers,
+        method: 'GET',
+        mode: 'cors',
+        signal: this.controller.signal
+      }).then(response => {
+        range.response = response.clone()
+        range.contentLength = this.getContentLength(response)
+        return range
+      }).then(this.addToPending.bind(this))
+        .then(this.monitorProgress.bind(this))
     }
 
-    const pool = new PromisePool(promiseProducer, this.threads)
-
-    // pool.addEventListener('fulfilled', async function (event) {
-    //   console.log('Fulfilled: ', event.data.result)
-    // })
-
-    // pool.addEventListener('rejected', function (event) {
-    //   console.log('Rejected: ' + event.data.error.message)
-    // })
-
-    pool.start()
-      .then(() => {
-        // console.log('All promises fulfilled', response)
-        self.downloadStream(response)
-        self.onFinish()
-      }, function (error) {
-        console.error(error)
-      })
-
-    // Return the original 'HEAD' response
-    return response
+    // All ranges accounted for
+    return null
   }
 
-  concatStreams ({response, contentRange}) {
-    contentRange = contentRange.split(' ')[1].split('/')[0]
-    const start = parseInt(contentRange.split('-')[0])
-    const end = Math.min(parseInt(contentRange.split('-')[1]), this.contentLength)
+  addToPending (range) {
+    this.pending.push(range)
 
-    // Map responses to arrayBuffers then reduce to single arrayBuffer for final response
-    return response.arrayBuffer()
-      .then(buffer => {
-        this.bufferView.set(new Uint8Array(buffer), start)
-        return new Response(response)
-      })
-      // TODO: fix monitorProgress
-      // .then(this.monitorProgress.bind(this))
+    if (this.pending.length < this.threads) {
+      this.fetchRange()
+    }
+
+    return range
   }
 
-  downloadStream (response) {
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(new Blob([this.buffer]))
-    link.download = this.fileName
-    link.dispatchEvent(new MouseEvent('click'))
+  monitorProgress (range) {
+    const cloned = range.response.clone()
+    const reader = cloned.body.getReader()
 
-    return new Response(response)
+    const pump = () => reader.read().then(({done, value}) => {
+      range.done = done
+      if (!done) {
+        range.loaded += value.byteLength
+        this.onProgress({id: range.id, contentLength: range.contentLength, loaded: range.loaded})
+        pump()
+      }
+    })
+
+    reader.closed.then(() => {
+      if (!range.done) {
+        console.error(`Range #${range.id} failed! Retrying...`)
+
+        this.fetchRetry(this.url, {
+          headers: range.headers,
+          method: 'GET',
+          mode: 'cors',
+          signal: this.controller.signal
+        }).then(response => {
+          range.response = response
+          range.contentLength = this.getContentLength(response)
+          return range
+        }).then(this.monitorProgress.bind(this))
+      }
+    })
+
+    // Start reading
+    pump()
+  }
+
+  transferPending () {
+    const range = this.pending[0]
+    if (range && !range.response.body.locked) {
+      const reader = range.response.body.getReader()
+      const pump = () => reader.read().then(({done, value}) => {
+        if (!done) {
+          this.writer.write(value)
+          pump()
+        } else {
+          this.pending.shift()
+          if (this.pending.length > 0) {
+            this.transferPending()
+            this.fetchRange() || this.transferPending()
+          } else if (this.rangeCount < this.totalRanges) {
+            this.fetchRange() || this.transferPending()
+          } else {
+            this.writer.close()
+            this.onFinish()
+          }
+        }
+      })
+
+      // Start reading
+      pump()
+    }
+  }
+
+  getContentLength (response) {
+    // Google drive response headers are all lower case, B2's are not!
+    return parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
   }
 
   fetchRetry (url, init) {
-    const retries = this.retries
-    const retryDelay = this.retryDelay
-    const retryOn = this.retryOn || []
+    const {retries, retryDelay, retryOn} = this
 
     return new Promise(function (resolve, reject) {
       function fetchAttempt (retriesRemaining) {
@@ -142,10 +172,12 @@ class MultiThread {
             }
           }
         }).catch(function (error) {
-          if (retriesRemaining > 0) {
-            retry(retriesRemaining)
-          } else {
-            reject(error)
+          if (retryOn.indexOf(404) !== -1) {
+            if (retriesRemaining > 0) {
+              retry(retriesRemaining)
+            } else {
+              reject(error)
+            }
           }
         })
       }
@@ -158,53 +190,5 @@ class MultiThread {
 
       fetchAttempt(retries)
     })
-  }
-
-  // TODO: fix monitorProgress
-  monitorProgress (response) {
-    // this occurs if cancel() was called before server responded (before fetch() Promise resolved)
-    if (this._cancelRequested) {
-      response.body.getReader().cancel()
-      return Promise.reject(new Error('Request was canceled before server responded.'))
-    }
-
-    let loaded = 0
-    const self = this
-    const progressID = this.progressMeters++
-    this._reader = response.body.getReader()
-
-    return new Response(new ReadableStream({
-      start (controller) {
-        if (self._cancelRequested) {
-          controller.close()
-          return
-        }
-
-        // Await resolution of first read() progress is sent for indicator accuracy
-        read()
-        self.onProgress({loaded: 0, total: self.contentLength, id: progressID})
-
-        function read () {
-          self._reader.read().then(({done, value}) => {
-            if (done) {
-              // ensure onProgress called when content-length=0
-              if (self.contentLength === 0) {
-                self.onProgress({loaded, total: self.contentLength, id: progressID})
-              }
-              controller.close()
-              return
-            }
-
-            loaded += value.byteLength
-            self.onProgress({loaded, total: self.contentLength, id: progressID})
-            controller.enqueue(value)
-            read()
-          }).catch(error => {
-            console.error(error)
-            controller.error(error)
-          })
-        }
-      }
-    }))
   }
 }
