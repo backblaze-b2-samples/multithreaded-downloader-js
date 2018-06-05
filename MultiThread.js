@@ -7,7 +7,6 @@ class MultiThread {
     Object.assign(this, options)
     this.onFinish = onFinish.bind(this)
     this.onProgress = onProgress.bind(this)
-
   }
 
   supported () {
@@ -26,7 +25,6 @@ class MultiThread {
     return Promise.resolve()
   }
 
-  // HEAD request, range requests, and trigger download
   fetch (url, init = {}) {
     this.url = new URL(url)
     this.controller = new AbortController()
@@ -44,6 +42,8 @@ class MultiThread {
       this.totalRanges = Math.ceil(this.contentLength / this.rangeSize)
       this.fileStream = streamSaver.createWriteStream(this.fileName, this.contentLength)
       this.writer = this.fileStream.getWriter()
+
+      // Start the first range then begin writing to output
       this.fetchRange().then(this.transferPending.bind(this))
     })
   }
@@ -91,6 +91,7 @@ class MultiThread {
   }
 
   monitorProgress (range) {
+    // Clone the response so the original won't be locked to a reader
     const cloned = range.response.clone()
     const reader = cloned.body.getReader()
 

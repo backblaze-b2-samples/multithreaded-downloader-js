@@ -18,19 +18,21 @@
 
   <main>
     <h2>Multi Threaded Downloader</h2>
-    <p>A browser based multithreaded downloader implemented in vanilla Javascript.</p>
-    <p>Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is reassembled and saved in the browser's Downloads folder.</p>
+    <p>A browser based multi-threaded downloader implemented in vanilla JavaScript.</p>
+    <p>Fetches parts of a file using the HTTP Range header and downloads those pieces in parallel. When the pieces have all been downloaded, the original file is re-assembled and saved in the browser's Downloads folder.</p>
     <ul>
-      <li>100% client side JavaScript, no plugins or proxy required</li>
-      <li>Sends a HTTP HEAD request to get the file's content-length</li>
-      <li>Sends multiple HTTP GET requests with range headers</li>
-      <li>Concatenates range responses into a single response</li>
-      <li>Respose triggers download with <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#attr-download">a[download]</a></li>
-      <li>Retry on fail or specific HTTP status codes <em><small>(503 Service Unavailable)</small></em></li>
+      <li>Sends HTTP HEAD request to get the file info</li>
+      <li>Calculate number of ranges and setup</li>
+      <li>Sends HTTP GET requests with "Range: bytes=start-end" header for each chunk</li>
+      <li>Monitor the progress of each response stream</li>
+      <li>Retry on fail or specific HTTP status codes (like 503 Service Unavailable)</li>
+      <li>Concatenates each response stream (in order) into a final output stream</li>
+      <li>Uses [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) to simplify downloading the output stream.</li>
+      <li>100% client side JavaScript, no plug-ins or proxy required</li>
     </ul>
+    This project is under development and still has some bugs.
     <br/>
     <h3>Demos</h3>
-    <p>These demos are much more interesting if viewed with the Network tab of Dev-Tools open.</p>
     <ul>
       <li>
         <a href="examples/backblaze.html">Backblaze B2</a>
