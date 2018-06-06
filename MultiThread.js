@@ -22,39 +22,46 @@ class MultiThread {
     this.url = new URL(url)
     this.controller = new AbortController()
 
-    return this.fetchRetry(this.url, {
-      method: 'HEAD',
-      mode: 'cors',
-      headers: init.headers,
-      signal: this.controller.signal
-    }).then(response => {
-      this.pending = []
-      this.rangeCount = 0
-      this.rangeSize *= 1048576 // Convert mb -> bytes
-      this.contentLength = this.getContentLength(response)
-      this.totalRanges = Math.ceil(this.contentLength / this.rangeSize)
-      this.fileStream = streamSaver.createWriteStream(this.fileName, this.contentLength)
-      this.writer = this.fileStream.getWriter()
+    try {
+      return this.fetchRetry(this.url, {
+        method: 'HEAD',
+        mode: 'cors',
+        headers: init.headers,
+        signal: this.controller.signal
+      }).then(response => {
+        this.queue = []
+        this.requestDelay = 250
+        this.rangesStarted = 0
+        this.rangesFinished = 0
+        this.rangeSize *= 1048576 // Convert mb -> bytes
+        this.contentLength = this.getContentLength(response)
+        this.totalRanges = Math.ceil(this.contentLength / this.rangeSize)
+        this.fileStream = streamSaver.createWriteStream(this.fileName, this.contentLength)
+        this.writer = this.fileStream.getWriter()
 
-      // Start the first range then begin writing to output
-      this.fetchRange().then(this.transferPending.bind(this))
-    })
+        this.onStart({rangeCount: this.totalRanges, contentLength: this.contentLength})
+
+        // Start the first range then begin writing to output
+        this.fetchRange().then(this.transferRange.bind(this))
+        for (let i = 1; i < this.threads; i++) {
+          setTimeout(this.fetchRange.bind(this), this.requestDelay * i)
+        }
+      })
+    } catch (error) {
+      console.error('gotit', error)
+    }
   }
 
   fetchRange () {
-    if (this.rangeCount < this.totalRanges) {
+    if (this.rangesStarted < this.totalRanges) {
       // Passthrough this.headers to each range request (for GDrive auth)
       const headers = new Headers(this.headers)
-      const start = this.rangeCount * this.rangeSize
+      const start = this.rangesStarted * this.rangeSize
       const end = start + this.rangeSize - 1
       headers.set('Range', `bytes=${start}-${end}`)
 
-      let range = {
-        id: this.rangeCount,
-        headers: headers,
-        loaded: 0
-      }
-      this.rangeCount++
+      let range = {id: this.rangesStarted, loaded: 0, headers, start, end}
+      this.rangesStarted++
 
       return this.fetchRetry(this.url, {
         headers: range.headers,
@@ -64,42 +71,51 @@ class MultiThread {
       }).then(response => {
         range.response = response.clone()
         range.contentLength = this.getContentLength(response)
+        range.onFinish = range => {
+          this.tryFetch()
+        }
+
+        this.queue.push(range)
         return range
-      }).then(this.addToPending.bind(this))
-        .then(this.monitorProgress.bind(this))
+      }).then(this.monitorStream.bind(this))
     }
 
     // All ranges accounted for
     return null
   }
 
-  addToPending (range) {
-    this.pending.push(range)
-
-    if (this.pending.length < this.threads) {
+  tryFetch () {
+    if (this.queue.length < this.threads) {
       this.fetchRange()
+    } else {
+      setTimeout(() => {
+        this.tryFetch()
+      }, this.requestDelay)
     }
-
-    return range
   }
 
-  monitorProgress (range) {
+  monitorStream (range) {
     // Clone the response so the original won't be locked to a reader
     const cloned = range.response.clone()
     const reader = cloned.body.getReader()
 
-    const pump = () => reader.read().then(({done, value}) => {
-      range.done = done
-      if (!done) {
-        range.loaded += value.byteLength
-        this.onProgress({id: range.id, contentLength: range.contentLength, loaded: range.loaded})
-        pump()
-      }
-    })
+    const pump = () => {
+      reader.read().then(({done, value}) => {
+        range.done = done
+        if (!range.done) {
+          range.loaded += value.byteLength
+          this.onProgress({id: range.id, contentLength: range.contentLength, loaded: range.loaded})
+          pump()
+        } else {
+          range.onFinish(range)
+        }
+      })
+    }
 
     reader.closed.then(() => {
       if (!range.done) {
-        console.error(`Range #${range.id} failed! Retrying...`)
+        range.stalled = true
+        console.error(`Range #${range.id} stalled! Retrying...`)
 
         this.fetchRetry(this.url, {
           headers: range.headers,
@@ -110,16 +126,17 @@ class MultiThread {
           range.response = response
           range.contentLength = this.getContentLength(response)
           return range
-        }).then(this.monitorProgress.bind(this))
+        }).then(this.monitorStream.bind(this))
       }
     })
 
     // Start reading
     pump()
+
+    return range
   }
 
-  transferPending () {
-    const range = this.pending[0]
+  transferRange (range) {
     if (range && !range.response.body.locked) {
       const reader = range.response.body.getReader()
       const pump = () => reader.read().then(({done, value}) => {
@@ -127,15 +144,19 @@ class MultiThread {
           this.writer.write(value)
           pump()
         } else {
-          this.pending.shift()
-          if (this.pending.length > 0) {
-            this.transferPending()
-            this.fetchRange() || this.transferPending()
-          } else if (this.rangeCount < this.totalRanges) {
-            this.fetchRange() || this.transferPending()
-          } else {
+          // Remove the range from the queue when it's done writing
+          this.queue.shift()
+          this.rangesFinished++
+          if (this.queue.length > 0) {
+            this.transferRange(this.queue[0])
+          } else if (this.rangesFinished === this.totalRanges) {
             this.writer.close()
             this.onFinish()
+          } else {
+            // Nothing in queue, try again later
+            setTimeout(() => {
+              this.transferRange(this.queue[0])
+            }, this.requestDelay)
           }
         }
       })
