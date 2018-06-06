@@ -33,25 +33,22 @@
       progressArea.removeChild(progressArea.firstChild)
     }
 
-    const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
-    const multiThread = new MultiThread(options, onProgress, onFinish)
-    multiThread.fetch(url, options)
-
-    downloadButton.setAttribute('disabled', true)
-    cancelButton.removeAttribute('disabled')
-
-    cancelButton.onclick = () => {
-      cancelButton.setAttribute('disabled', true)
-      downloadButton.removeAttribute('disabled')
-      multiThread.cancel()
+    const info = document.createElement('p')
+    options.onStart = ({rangeCount, contentLength}) => {
+      contentLength /= 1048576 // Convert bytes -> mb
+      info.innerText = `Downloading ${contentLength.toFixed(2)}mb in ${rangeCount} range requests.`
+      progressArea.appendChild(info)
+      downloadButton.setAttribute('disabled', true)
+      cancelButton.removeAttribute('disabled')
     }
 
-    function onFinish () {
+    options.onFinish = () => {
+      info.innerText += `.. Done.`
       cancelButton.setAttribute('disabled', true)
       downloadButton.removeAttribute('disabled')
     }
 
-    function onProgress ({id, contentLength, loaded}) {
+    options.onProgress = ({id, contentLength, loaded}) => {
       if (!progressElements[id]) {
         progressElements[id] = document.createElement('progress')
         progressElements[id].value = 0
@@ -61,8 +58,17 @@
 
       // handle divide-by-zero edge case when Content-Length=0
       const percent = contentLength ? loaded / contentLength : 1
-
       progressElements[id].value = Math.round(percent * 100)
+    }
+
+    const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
+    const multiThread = new MultiThread(options)
+    multiThread.fetch(url, options)
+
+    cancelButton.onclick = () => {
+      cancelButton.setAttribute('disabled', true)
+      downloadButton.removeAttribute('disabled')
+      multiThread.cancel()
     }
   }
 })()

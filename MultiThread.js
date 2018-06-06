@@ -1,20 +1,13 @@
 class MultiThread {
-  constructor (options = {}, onProgress = () => {}, onFinish = () => {}) {
-    if (!this.supported()) {
+  constructor (options = {onStart: () => {}, onProgress: () => {}, onFinish: () => {}}) {
+    if (!window.ReadableStream && !window.WritableStream) {
       throw Error('Web Streams are not yet supported in this browser.')
     }
 
     Object.assign(this, options)
-    this.onFinish = onFinish.bind(this)
-    this.onProgress = onProgress.bind(this)
-  }
-
-  supported () {
-    try {
-      return !!new window.ReadableStream() && !!new window.WritableStream()
-    } catch (error) {
-      return false
-    }
+    this.onStart = this.onStart.bind(this)
+    this.onFinish = this.onFinish.bind(this)
+    this.onProgress = this.onProgress.bind(this)
   }
 
   cancel () {
