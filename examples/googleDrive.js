@@ -7,10 +7,12 @@
   const retryOnInput = document.getElementById('retryOn')
   const fileList = document.getElementById('fileList')
   const downloadButton = document.getElementById('downloadButton')
-  const cancelButton = document.getElementById('cancelButton')
   const signinButton = document.getElementById('signin-button')
   const signoutButton = document.getElementById('signout-button')
-  const progressArea = document.getElementById('progressArea')
+  const notificationArea = document.getElementById('notificationArea')
+  const mainProgressArea = document.getElementById('mainProgressArea')
+  const rangeProgressArea = document.getElementById('rangeProgressArea')
+  const notification = document.createElement('blockquote')
 
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
@@ -56,6 +58,14 @@
     }
   }
 
+  function addOption (value, text) {
+    let option = document.createElement('option')
+    option.value = value
+    option.innerText = text
+
+    fileList.appendChild(option)
+  }
+
   function listFiles () {
     gapi.client.drive.files.list({fields: 'files(id, name, size)'}).then((response) => {
       let files = response.result.files
@@ -67,85 +77,109 @@
           }
         }
 
-        downloadButton.onclick = (event) => {
-          let index = fileList.options.selectedIndex
-          if (index > 0) {
-            const fileID = fileList.options[index].value
-            const fileName = fileList.options[index].innerText
-            const threads = parseInt(threadsInput.value)
-            const rangeSize = parseInt(rangeSizeInput.value)
-            const retries = parseInt(retriesInput.value)
-            const retryDelay = parseInt(retryDelayInput.value)
-            const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
-
-            downloadFile({fileID, threads, rangeSize, retries, retryDelay, retryOn, fileName})
-          }
-        }
+        downloadButton.onclick = startDownload
       } else {
         addOption(null, 'No files found.')
       }
     })
   }
 
-  function addOption (value, text) {
-    let option = document.createElement('option')
-    option.value = value
-    option.innerText = text
+  function startDownload () {
+    let index = fileList.options.selectedIndex
+    if (index > 0) {
+      const fileID = fileList.options[index].value
+      const fileName = fileList.options[index].innerText
+      const threads = parseInt(threadsInput.value)
+      const rangeSize = util.mbToBytes(parseInt(rangeSizeInput.value))
+      const retries = parseInt(retriesInput.value)
+      const retryDelay = parseInt(retryDelayInput.value)
+      const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
 
-    fileList.appendChild(option)
+      downloadFile({fileID, threads, rangeSize, retries, retryDelay, retryOn, fileName})
+    }
   }
 
-  // https://developers.google.com/drive/v3/web/manage-downloads
-  // https://developers.google.com/api-client-library/javascript/features/cors
   function downloadFile (options) {
-    let progressElements = []
-
-    // Clear out any old progress elements left in DOM
-    while (progressArea.firstChild) {
-      progressArea.removeChild(progressArea.firstChild)
-    }
-
+    // https://developers.google.com/drive/v3/web/manage-downloads
+    // https://developers.google.com/api-client-library/javascript/features/cors
     const user = gapi.auth2.getAuthInstance().currentUser.get()
     const accessToken = user.getAuthResponse().access_token
-
-    // options.controller = new AbortController()
     options.headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
 
-    const info = document.createElement('p')
-    options.onStart = ({rangeCount, contentLength}) => {
-      contentLength /= 1048576 // Convert bytes -> mb
-      info.innerText = `Downloading ${contentLength.toFixed(2)}mb in ${rangeCount} range requests.`
-      progressArea.appendChild(info)
-      downloadButton.setAttribute('disabled', true)
-      cancelButton.removeAttribute('disabled')
+    // Remove any previous children in the DOM from previous downloads
+    util.removeAllChildren(notificationArea)
+    util.removeAllChildren(mainProgressArea)
+    util.removeAllChildren(rangeProgressArea)
+
+    // Change download button into cancel button
+    downloadButton.innerText = 'Cancel'
+    downloadButton.onclick = () => {
+      downloadButton.innerText = 'Download'
+      downloadButton.onclick = startDownload
+      multiThread.cancel()
     }
 
-    options.onProgress = ({id, contentLength, loaded}) => {
-      if (!progressElements[id]) {
-        progressElements[id] = document.createElement('progress')
-        progressElements[id].value = 0
-        progressElements[id].max = 100
-        progressArea.appendChild(progressElements[id])
-      }
+    // Main callbacks
+    options.onStart = ({rangesTotal, contentLength}) => {
+      notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)}mb`
+      notificationArea.appendChild(notification)
+    }
+
+    options.onProgress = ({contentLength, loaded}) => {
       // handle divide-by-zero edge case when Content-Length=0
       const percent = contentLength ? loaded / contentLength : 1
-      progressElements[id].value = Math.round(percent * 100)
+      notification.innerText = `Downloading ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)}mb, ${Math.round(percent * 100)}%`
     }
 
     options.onFinish = () => {
-      info.innerText += `.. Done.`
-      cancelButton.setAttribute('disabled', true)
-      downloadButton.removeAttribute('disabled')
+      notification.innerText = ` Download finished successfully!`
+      downloadButton.innerText = 'Download'
     }
 
-    const url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
+    // Individual range callbacks
+    let progressElements = []
+
+    options.onRangeStart = ({id, contentLength}) => {
+      if (!progressElements[id] && id !== undefined) {
+        const progress = document.createElement('progress')
+        progress.value = 0
+        progress.max = 100
+
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.innerText = `Retry`
+        button.classList.add('retry-button')
+        button.onclick = () => {
+          multiThread.retryRangeById(id)
+        }
+
+        rangeProgressArea.appendChild(progress)
+        rangeProgressArea.appendChild(button)
+
+        progressElements[id] = {
+          progress: progress,
+          button: button
+        }
+      }
+    }
+
+    options.onRangeProgress = ({id, contentLength, loaded}) => {
+      if (!progressElements[id]) {
+        options.onRangeStart({id, contentLength})
+      } else {
+        // handle divide-by-zero edge case when Content-Length=0
+        const percent = contentLength ? loaded / contentLength : 1
+        progressElements[id].progress.value = Math.round(percent * 100)
+      }
+    }
+
+    options.onRangeFinish = ({id, contentLength}) => {
+      progressElements[id].button.innerText = 'Done'
+      progressElements[id].button.setAttribute('disabled', true)
+    }
+
     const multiThread = new MultiThread(options)
+    const url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
     multiThread.fetch(url, options)
-
-    cancelButton.onclick = () => {
-      cancelButton.setAttribute('disabled', true)
-      downloadButton.removeAttribute('disabled')
-      multiThread.cancel()
-    }
   }
 })()
