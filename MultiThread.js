@@ -11,7 +11,7 @@ class MultiThread {
     this.controller = new AbortController()
     this.refreshTime = 1000
     this.downloadQueue = []
-    this.currentRange = null
+    this.currentChunk = null
   }
 
   fetch (url, init) {
@@ -26,8 +26,8 @@ class MultiThread {
     }).then(response => {
       this.contentLength = util.getContentLength(response)
       this.bytesWritten = 0
-      this.ranges = {
-        total: Math.ceil(this.contentLength / this.rangeSize),
+      this.chunks = {
+        total: Math.ceil(this.contentLength / this.chunkSize),
         started: 0,
         finished: 0
       }
@@ -36,93 +36,93 @@ class MultiThread {
       this.writer = fileStream.getWriter()
       this.writer.writing = false
 
-      this.onStart({rangesTotal: this.ranges.total, contentLength: this.contentLength})
+      this.onStart({totalChunks: this.chunks.total, contentLength: this.contentLength})
 
-      this.fetchRange()
-      this.writeNextRange()
+      this.fetchChunk()
+      this.writeNextChunk()
       for (let i = 1; i < this.threads; i++) {
         this.tryFetch()
       }
     })
   }
 
-  fetchRange () {
-    if (this.ranges.started < this.ranges.total) {
-      const start = this.ranges.started * this.rangeSize
-      const end = start + this.rangeSize - 1
-      const id = this.ranges.started++
+  fetchChunk () {
+    if (this.chunks.started < this.chunks.total) {
+      const start = this.chunks.started * this.chunkSize
+      const end = start + this.chunkSize - 1
+      const id = this.chunks.started++
 
-      let range = new Range({
+      let chunk = new Chunk({
         id: id,
         end: end,
         start: start,
         headers: this.headers,
-        onStart: this.onRangeStart,
-        onProgress: this.onRangeProgress,
-        onFinish: this.onRangeFinish
+        onStart: this.onChunkStart,
+        onProgress: this.onChunkProgress,
+        onFinish: this.onChunkFinish
       })
 
-      this.downloadQueue.push(range)
+      this.downloadQueue.push(chunk)
 
-      return range.fetch(this.url, {
+      return chunk.fetch(this.url, {
         headers: this.requestHeaders,
         controller: this.controller
       })
     }
 
-    // No ranges left
+    // No chunks left
     return null
   }
 
   tryFetch () {
     if (this.downloadQueue.length < this.threads) {
-      this.fetchRange()
+      this.fetchChunk()
     } else {
       console.log('waiting for slot in queue')
       setTimeout(this.tryFetch.bind(this), this.refreshTime)
     }
   }
 
-  writeNextRange () {
-    let range = this.downloadQueue.find(item => item.id === this.ranges.finished)
+  writeNextChunk () {
+    let chunk = this.downloadQueue.find(item => item.id === this.chunks.finished)
 
-    if (range) {
-      // Move range from downloadQueue to this.currentRange
-      this.downloadQueue = this.downloadQueue.filter(item => item.id !== range.id)
-      this.currentRange = range
+    if (chunk) {
+      // Move chunk from downloadQueue to this.currentChunk
+      this.downloadQueue = this.downloadQueue.filter(item => item.id !== chunk.id)
+      this.currentChunk = chunk
       this.writeStream()
-    } else if (this.ranges.total === this.ranges.finished) {
+    } else if (this.chunks.total === this.chunks.finished) {
       console.log('finished')
     } else {
-      console.warn('borked')
+      // console.warn('borked')
       this.tryFetch()
-      return setTimeout(this.writeNextRange.bind(this), this.refreshTime)
+      return setTimeout(this.writeNextChunk.bind(this), this.refreshTime)
     }
   }
 
   writeStream () {
-    if (!this.currentRange || !this.currentRange.response) {
+    if (!this.currentChunk || !this.currentChunk.response) {
       // Response not ready yet
       return setTimeout(this.writeStream.bind(this), this.refreshTime)
     }
 
-    if (!this.currentRange.response.body.locked) {
+    if (!this.currentChunk.response.body.locked) {
       this.writer.writing = true
-      this.currentRange.reader = this.currentRange.response.body.getReader()
+      this.currentChunk.reader = this.currentChunk.response.body.getReader()
 
-      const pump = () => this.currentRange.reader.read().then(({done, value}) => {
-        this.currentRange.doneWriting = done
-        if (!this.currentRange.doneWriting) {
-          this.currentRange.bytesWritten += value.byteLength
+      const pump = () => this.currentChunk.reader.read().then(({done, value}) => {
+        this.currentChunk.doneWriting = done
+        if (!this.currentChunk.doneWriting) {
+          this.currentChunk.bytesWritten += value.byteLength
           this.bytesWritten += value.byteLength
           this.writer.write(value)
           this.onProgress({contentLength: this.contentLength, loaded: this.bytesWritten})
           pump()
         } else {
           this.writer.writing = false
-          this.ranges.finished++
-          if (this.ranges.finished < this.ranges.total) {
-            this.writeNextRange()
+          this.chunks.finished++
+          if (this.chunks.finished < this.chunks.total) {
+            this.writeNextChunk()
             this.tryFetch()
           } else {
             this.writer.close()
@@ -130,22 +130,22 @@ class MultiThread {
           }
         }
       }).catch(error => {
-        if (!this.currentRange.doneWriting) {
-          console.error(`Range #${this.currentRange.id} failed: `, error)
-          this.currentRange.retry()
+        if (!this.currentChunk.doneWriting) {
+          console.error(`Chunk #${this.currentChunk.id} failed: `, error)
+          this.currentChunk.retry()
         }
       })
 
       // Start reading
       pump()
     } else {
-      console.log(this.currentRange)
+      console.log(this.currentChunk)
     }
   }
 
   retryRangeById (id) {
-    const range = this.writeQueue.find(item => item.id === this.ranges.finished) || this.downloadQueue.find(item => item.id === this.ranges.finished)
-    range.retry()
+    const chunk = this.writeQueue.find(item => item.id === this.chunks.finished) || this.downloadQueue.find(item => item.id === this.chunks.finished)
+    chunk.retry()
   }
 
   cancel () {

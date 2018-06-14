@@ -1,8 +1,8 @@
-class Range {
+class Chunk {
   constructor (options = {onStart: () => {}, onProgress: () => {}, onFinish: () => {}}) {
     Object.assign(this, options)
 
-    // Passthrough this.headers to each range request (for GDrive auth)
+    // Passthrough this.headers to each range request (for Google Drive auth)
     this.headers = new Headers(this.headers)
     this.headers.set('Range', `bytes=${this.start}-${this.end}`)
     this.doneReading = false

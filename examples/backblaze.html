@@ -19,12 +19,12 @@
   <main>
     <h2>Backblaze B2 Demo</h2>
     <section>
-      <label for="threads">Number of concurrent threads</label>
+      <label for="threads">Concurrent threads</label>
       <input type="number" id="threads" name="threads" value="4">
     </section>
     <section>
-      <label for="chunkSize">Range size in MB</label>
-      <input type="number" id="rangeSize" name="rangeSize" value="4">
+      <label for="chunkSize">Chunk size in MB</label>
+      <input type="number" id="chunkSize" name="chunkSize" value="4">
     </section>
     <section>
       <label for="retries">Retry attempts</label>
@@ -53,13 +53,13 @@
     <button type="button" id="downloadButton">Download</button>
     <div id="notificationArea" class="normal"></div>
     <div id="mainProgressArea"></div>
-    <div id="rangeProgressArea"></div>
+    <div id="chunkProgressArea"></div>
   </main>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
   <script defer src="../bower_components/StreamSaver.js/StreamSaver.js"></script>
   <script src="../util.js"></script>
-  <script src="../Range.js"></script>
+  <script src="../Chunk.js"></script>
   <script src="../MultiThread.js"></script>
   <script defer src="backblaze.js"></script>
 </body>

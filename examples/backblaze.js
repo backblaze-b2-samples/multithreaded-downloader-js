@@ -1,5 +1,5 @@
 (() => {
-  const rangeSizeInput = document.getElementById('rangeSize')
+  const chunkSizeInput = document.getElementById('chunkSize')
   const threadsInput = document.getElementById('threads')
   const retryDelayInput = document.getElementById('retryDelay')
   const retriesInput = document.getElementById('retries')
@@ -8,7 +8,7 @@
   const downloadButton = document.getElementById('downloadButton')
   const notificationArea = document.getElementById('notificationArea')
   const mainProgressArea = document.getElementById('mainProgressArea')
-  const rangeProgressArea = document.getElementById('rangeProgressArea')
+  const chunkProgressArea = document.getElementById('chunkProgressArea')
   const notification = document.createElement('blockquote')
 
   downloadButton.onclick = startDownload
@@ -20,14 +20,14 @@
       const clusterNum = fileList.options[index].dataset.clusterNum
       const bucketName = fileList.options[index].dataset.bucketName
       const threads = parseInt(threadsInput.value)
-      const rangeSize = util.mbToBytes(parseInt(rangeSizeInput.value))
+      const chunkSize = util.mbToBytes(parseInt(chunkSizeInput.value))
       const retries = parseInt(retriesInput.value)
       const retryDelay = parseInt(retryDelayInput.value)
       const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
       const fileName = fileList.options[index].value
 
       downloadButton.innerText = 'Cancel'
-      downloadFile({clusterNum, bucketName, threads, rangeSize, retries, retryDelay, retryOn, fileName})
+      downloadFile({clusterNum, bucketName, threads, chunkSize, retries, retryDelay, retryOn, fileName})
     }
   }
 
@@ -35,7 +35,7 @@
     // Remove any previous children in the DOM from previous downloads
     util.removeAllChildren(notificationArea)
     util.removeAllChildren(mainProgressArea)
-    util.removeAllChildren(rangeProgressArea)
+    util.removeAllChildren(chunkProgressArea)
 
     // Change download button into cancel button
     downloadButton.innerText = 'Cancel'
@@ -46,7 +46,7 @@
     }
 
     // Main callbacks
-    options.onStart = ({rangesTotal, contentLength}) => {
+    options.onStart = ({totalChunks, contentLength}) => {
       notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)}mb`
       notificationArea.appendChild(notification)
     }
@@ -65,7 +65,7 @@
     // Individual range callbacks
     let progressElements = []
 
-    options.onRangeStart = ({id, contentLength}) => {
+    options.onChunkStart = ({id, contentLength}) => {
       if (!progressElements[id] && id !== undefined) {
         const progress = document.createElement('progress')
         progress.value = 0
@@ -79,8 +79,8 @@
           multiThread.retryRangeById(id)
         }
 
-        rangeProgressArea.appendChild(progress)
-        rangeProgressArea.appendChild(button)
+        chunkProgressArea.appendChild(progress)
+        chunkProgressArea.appendChild(button)
 
         progressElements[id] = {
           progress: progress,
@@ -89,9 +89,9 @@
       }
     }
 
-    options.onRangeProgress = ({id, contentLength, loaded}) => {
+    options.onChunkProgress = ({id, contentLength, loaded}) => {
       if (!progressElements[id]) {
-        options.onRangeStart({id, contentLength})
+        options.onChunkStart({id, contentLength})
       } else {
         // handle divide-by-zero edge case when Content-Length=0
         const percent = contentLength ? loaded / contentLength : 1
@@ -99,7 +99,7 @@
       }
     }
 
-    options.onRangeFinish = ({id, contentLength}) => {
+    options.onChunkFinish = ({id, contentLength}) => {
       progressElements[id].button.innerText = 'Done'
       progressElements[id].button.setAttribute('disabled', true)
     }
