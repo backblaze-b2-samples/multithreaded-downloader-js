@@ -1,30 +1,32 @@
 class Chunk {
-  constructor (options = {onStart: () => {}, onProgress: () => {}, onFinish: () => {}}) {
+  constructor (options) {
     Object.assign(this, options)
+    this.onStart = this.onStart.bind(this) || function () {}
+    this.onFinish = this.onFinish.bind(this) || function () {}
+    this.onProgress = this.onProgress.bind(this) || function () {}
 
     // Passthrough this.headers to each range request (for Google Drive auth)
     this.headers = new Headers(this.headers)
-    this.headers.set('Range', `bytes=${this.start}-${this.end}`)
-    this.doneReading = false
+    this.headers.set('Range', `bytes=${this.startByte}-${this.endByte}`)
+    this.url = new URL(this.url)
+    this.doneLoading = false
     this.doneWriting = false
-    this.bytesLoaded = 0
-    this.bytesWritten = 0
+    this.loaded = 0
+    this.written = 0
   }
 
-  fetch (url, init) {
-    this.url = new URL(url)
-    this.controller = init.controller
-
+  start () {
     return util.fetchRetry(this.url, {
       headers: this.headers,
       method: 'GET',
       mode: 'cors',
       signal: this.controller.signal
     }).then(response => {
-      this.response = response.clone()
+      this.response = response
       this.contentLength = util.getContentLength(response)
+      this.onStart({contentLength: this.contentLength, id: this.id})
       this.monitor()
-      this.onStart({id: this.id, contentLength: this.contentLength})
+
       return this
     })
   }
@@ -35,23 +37,23 @@ class Chunk {
 
     const pump = () => {
       this.monitorReader.read().then(({done, value}) => {
-        this.doneReading = done
-        if (!this.doneReading) {
-          this.bytesLoaded += value.byteLength
-          this.onProgress({id: this.id, contentLength: this.contentLength, loaded: this.bytesLoaded})
+        this.doneLoading = done
+
+        if (!done) {
+          this.loaded += value.byteLength
+          this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
           pump()
         } else {
-          this.onFinish({id: this.id, contentLength: this.contentLength})
+          this.onFinish({contentLength: this.contentLength, id: this.id})
         }
       }).catch(error => {
-        if (!this.doneReading) {
+        if (!this.doneLoading) {
           console.error(error)
           this.retry()
         }
       })
     }
 
-    // Start reading
     pump()
   }
 
@@ -66,13 +68,12 @@ class Chunk {
       this.reader.cancel()
     }
 
-    // if (this.response.body) {
-    //   this.response.body.cancel()
-    // }
+    if (this.response.body) {
+      this.response.body.cancel()
+    }
 
-    this.start = this.start + this.bytesLoaded
-    this.headers.set('Range', `bytes=${this.start}-${this.end}`)
-
-    return this.fetch(this.url, {controller: this.controller})
+    this.startByte = this.startByte + this.loaded
+    this.headers.set('Range', `bytes=${this.startByte}-${this.endByte}`)
+    this.start()
   }
 }

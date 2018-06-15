@@ -120,7 +120,7 @@
     }
 
     // Main callbacks
-    options.onStart = ({totalChunks, contentLength}) => {
+    options.onStart = ({contentLength, chunks}) => {
       notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)}mb`
       notificationArea.appendChild(notification)
     }
@@ -134,12 +134,13 @@
     options.onFinish = () => {
       notification.innerText = ` Download finished successfully!`
       downloadButton.innerText = 'Download'
+      downloadButton.onclick = startDownload
     }
 
     // Individual range callbacks
     let progressElements = []
 
-    options.onChunkStart = ({id, contentLength}) => {
+    options.onChunkStart = ({contentLength, id}) => {
       if (!progressElements[id] && id !== undefined) {
         const progress = document.createElement('progress')
         progress.value = 0
@@ -163,9 +164,9 @@
       }
     }
 
-    options.onChunkProgress = ({id, contentLength, loaded}) => {
+    options.onChunkProgress = ({contentLength, loaded, id}) => {
       if (!progressElements[id]) {
-        options.onChunkStart({id, contentLength})
+        options.onChunkStart({contentLength, id})
       } else {
         // handle divide-by-zero edge case when Content-Length=0
         const percent = contentLength ? loaded / contentLength : 1
@@ -173,13 +174,13 @@
       }
     }
 
-    options.onChunkFinish = ({id, contentLength}) => {
+    options.onChunkFinish = ({contentLength, id}) => {
       progressElements[id].button.innerText = 'Done'
       progressElements[id].button.setAttribute('disabled', true)
     }
 
+    options.url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
+
     const multiThread = new MultiThread(options)
-    const url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
-    multiThread.fetch(url, options)
   }
 })()

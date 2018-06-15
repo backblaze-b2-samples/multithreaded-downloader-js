@@ -46,26 +46,27 @@
     }
 
     // Main callbacks
-    options.onStart = ({totalChunks, contentLength}) => {
-      notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)}mb`
+    options.onStart = ({contentLength, chunks}) => {
+      notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)} MB`
       notificationArea.appendChild(notification)
     }
 
-    options.onProgress = ({contentLength, loaded}) => {
+    options.onProgress = ({contentLength, loaded, finished}) => {
       // handle divide-by-zero edge case when Content-Length=0
       const percent = contentLength ? loaded / contentLength : 1
-      notification.innerText = `Downloading ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)}mb, ${Math.round(percent * 100)}%`
+      notification.innerText = `Downloading ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%`
     }
 
     options.onFinish = () => {
       notification.innerText = ` Download finished successfully!`
       downloadButton.innerText = 'Download'
+      downloadButton.onclick = startDownload
     }
 
     // Individual range callbacks
     let progressElements = []
 
-    options.onChunkStart = ({id, contentLength}) => {
+    options.onChunkStart = ({contentLength, id}) => {
       if (!progressElements[id] && id !== undefined) {
         const progress = document.createElement('progress')
         progress.value = 0
@@ -89,7 +90,7 @@
       }
     }
 
-    options.onChunkProgress = ({id, contentLength, loaded}) => {
+    options.onChunkProgress = ({contentLength, loaded, id}) => {
       if (!progressElements[id]) {
         options.onChunkStart({id, contentLength})
       } else {
@@ -99,13 +100,13 @@
       }
     }
 
-    options.onChunkFinish = ({id, contentLength}) => {
+    options.onChunkFinish = ({contentLength, id}) => {
       progressElements[id].button.innerText = 'Done'
       progressElements[id].button.setAttribute('disabled', true)
     }
 
+    options.url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
+
     const multiThread = new MultiThread(options)
-    const url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)
-    multiThread.fetch(url, options)
   }
 })()

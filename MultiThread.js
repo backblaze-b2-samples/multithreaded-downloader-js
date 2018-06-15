@@ -8,91 +8,89 @@ class MultiThread {
     this.onStart = this.onStart.bind(this) || function () {}
     this.onFinish = this.onFinish.bind(this) || function () {}
     this.onProgress = this.onProgress.bind(this) || function () {}
+    this.headers = new Headers(this.headers)
     this.controller = new AbortController()
+    this.url = new URL(this.url)
     this.refreshTime = 1000
-    this.downloadQueue = []
-    this.currentChunk = null
-  }
+    this.writing = false
+    this.written = 0
+    this.loaded = 0
+    this.queue = []
 
-  fetch (url, init) {
-    this.url = new URL(url)
-    this.requestHeaders = new Headers(init.headers)
-
-    return util.fetchRetry(this.url, {
+    util.fetchRetry(this.url, {
       method: 'HEAD',
       mode: 'cors',
-      headers: this.requestHeaders,
+      headers: this.headers,
       signal: this.controller.signal
     }).then(response => {
       this.contentLength = util.getContentLength(response)
-      this.bytesWritten = 0
+      this.writer = streamSaver.createWriteStream(this.fileName, this.contentLength).getWriter()
       this.chunks = {
         total: Math.ceil(this.contentLength / this.chunkSize),
         started: 0,
         finished: 0
       }
 
-      const fileStream = streamSaver.createWriteStream(this.fileName, this.contentLength)
-      this.writer = fileStream.getWriter()
-      this.writer.writing = false
-
-      this.onStart({totalChunks: this.chunks.total, contentLength: this.contentLength})
-
+      this.onStart({contentLength: this.contentLength, chunks: this.chunks.total})
       this.fetchChunk()
       this.writeNextChunk()
+
       for (let i = 1; i < this.threads; i++) {
         this.tryFetch()
       }
     })
+
+    return this
+  }
+
+  tryFetch () {
+    if (this.queue.length < this.threads) {
+      this.fetchChunk()
+    } else {
+      // console.log('waiting for slot in queue')
+      setTimeout(this.tryFetch.bind(this), this.refreshTime)
+    }
   }
 
   fetchChunk () {
     if (this.chunks.started < this.chunks.total) {
-      const start = this.chunks.started * this.chunkSize
-      const end = start + this.chunkSize - 1
+      const startByte = this.chunks.started * this.chunkSize
+      const endByte = startByte + this.chunkSize - 1
       const id = this.chunks.started++
 
       let chunk = new Chunk({
         id: id,
-        end: end,
-        start: start,
+        url: this.url,
+        endByte: endByte,
+        startByte: startByte,
         headers: this.headers,
+        controller: this.controller,
         onStart: this.onChunkStart,
-        onProgress: this.onChunkProgress,
-        onFinish: this.onChunkFinish
+        onFinish: this.onChunkFinish,
+        onProgress: ({id, contentLength, loaded, byteLength}) => {
+          this.loaded += byteLength
+          this.onProgress({contentLength: this.contentLength, finished: this.chunks.finished, loaded: this.loaded})
+          this.onChunkProgress({contentLength: contentLength, loaded: loaded, id: id})
+        }
       })
 
-      this.downloadQueue.push(chunk)
+      this.queue.push(chunk)
 
-      return chunk.fetch(this.url, {
-        headers: this.requestHeaders,
-        controller: this.controller
-      })
+      return chunk.start()
     }
 
     // No chunks left
     return null
   }
 
-  tryFetch () {
-    if (this.downloadQueue.length < this.threads) {
-      this.fetchChunk()
-    } else {
-      console.log('waiting for slot in queue')
-      setTimeout(this.tryFetch.bind(this), this.refreshTime)
-    }
-  }
-
   writeNextChunk () {
-    let chunk = this.downloadQueue.find(item => item.id === this.chunks.finished)
+    let chunk = this.queue.find(item => item.id === this.chunks.finished)
 
     if (chunk) {
-      // Move chunk from downloadQueue to this.currentChunk
-      this.downloadQueue = this.downloadQueue.filter(item => item.id !== chunk.id)
+      // Move chunk from queue to this.currentChunk
+      this.queue = this.queue.filter(item => item.id !== chunk.id)
       this.currentChunk = chunk
       this.writeStream()
-    } else if (this.chunks.total === this.chunks.finished) {
-      console.log('finished')
     } else {
       // console.warn('borked')
       this.tryFetch()
@@ -107,44 +105,44 @@ class MultiThread {
     }
 
     if (!this.currentChunk.response.body.locked) {
-      this.writer.writing = true
       this.currentChunk.reader = this.currentChunk.response.body.getReader()
+      this.writing = true
 
-      const pump = () => this.currentChunk.reader.read().then(({done, value}) => {
-        this.currentChunk.doneWriting = done
-        if (!this.currentChunk.doneWriting) {
-          this.currentChunk.bytesWritten += value.byteLength
-          this.bytesWritten += value.byteLength
-          this.writer.write(value)
-          this.onProgress({contentLength: this.contentLength, loaded: this.bytesWritten})
-          pump()
-        } else {
-          this.writer.writing = false
-          this.chunks.finished++
-          if (this.chunks.finished < this.chunks.total) {
-            this.writeNextChunk()
-            this.tryFetch()
+      const pump = () => {
+        this.currentChunk.reader.read().then(({done, value}) => {
+          this.currentChunk.doneWriting = done
+
+          if (!done) {
+            this.currentChunk.written += value.byteLength
+            this.written += value.byteLength
+            this.writer.write(value)
+            pump()
           } else {
-            this.writer.close()
-            this.onFinish()
-          }
-        }
-      }).catch(error => {
-        if (!this.currentChunk.doneWriting) {
-          console.error(`Chunk #${this.currentChunk.id} failed: `, error)
-          this.currentChunk.retry()
-        }
-      })
+            this.writing = false
+            this.chunks.finished++
 
-      // Start reading
+            if (this.chunks.finished < this.chunks.total) {
+              this.writeNextChunk()
+              this.tryFetch()
+            } else {
+              this.writer.close()
+              this.onFinish()
+            }
+          }
+        }).catch(error => {
+          if (!this.currentChunk.doneWriting) {
+            console.error(`Chunk #${this.currentChunk.id} failed: `, error)
+            this.currentChunk.retry()
+          }
+        })
+      }
+
       pump()
-    } else {
-      console.log(this.currentChunk)
     }
   }
 
   retryRangeById (id) {
-    const chunk = this.writeQueue.find(item => item.id === this.chunks.finished) || this.downloadQueue.find(item => item.id === this.chunks.finished)
+    const chunk = this.queue.find(item => item.id === this.chunks.finished)
     chunk.retry()
   }
 
