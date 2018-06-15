@@ -10,9 +10,7 @@
   const signinButton = document.getElementById('signin-button')
   const signoutButton = document.getElementById('signout-button')
   const notificationArea = document.getElementById('notificationArea')
-  const mainProgressArea = document.getElementById('mainProgressArea')
   const chunkProgressArea = document.getElementById('chunkProgressArea')
-  const notification = document.createElement('blockquote')
 
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
@@ -108,7 +106,6 @@
 
     // Remove any previous children in the DOM from previous downloads
     util.removeAllChildren(notificationArea)
-    util.removeAllChildren(mainProgressArea)
     util.removeAllChildren(chunkProgressArea)
 
     // Change download button into cancel button
@@ -119,25 +116,28 @@
       multiThread.cancel()
     }
 
-    // Main callbacks
+    let total = 0
+    const notification = document.createElement('blockquote')
     options.onStart = ({contentLength, chunks}) => {
-      notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)}mb`
       notificationArea.appendChild(notification)
+      total = chunks
     }
 
-    options.onProgress = ({contentLength, loaded}) => {
-      // handle divide-by-zero edge case when Content-Length=0
-      const percent = contentLength ? loaded / contentLength : 1
-      notification.innerText = `Downloading ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)}mb, ${Math.round(percent * 100)}%`
-    }
-
-    options.onFinish = () => {
-      notification.innerText = ` Download finished successfully!`
+    options.onFinish = ({contentLength}) => {
+      notification.innerText += '\nFinished successfully!'
       downloadButton.innerText = 'Download'
       downloadButton.onclick = startDownload
     }
 
-    // Individual range callbacks
+    options.onProgress = ({contentLength, loaded, started}) => {
+      // handle divide-by-zero edge case when Content-Length=0
+      const percent = contentLength ? loaded / contentLength : 1
+      notification.innerText = `Downloading
+        ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%
+        ${started}/${total} chunks
+      `
+    }
+
     let progressElements = []
 
     options.onChunkStart = ({contentLength, id}) => {
@@ -164,6 +164,11 @@
       }
     }
 
+    options.onChunkFinish = ({contentLength, id}) => {
+      progressElements[id].button.innerText = 'Done'
+      progressElements[id].button.setAttribute('disabled', true)
+    }
+
     options.onChunkProgress = ({contentLength, loaded, id}) => {
       if (!progressElements[id]) {
         options.onChunkStart({contentLength, id})
@@ -172,11 +177,6 @@
         const percent = contentLength ? loaded / contentLength : 1
         progressElements[id].progress.value = Math.round(percent * 100)
       }
-    }
-
-    options.onChunkFinish = ({contentLength, id}) => {
-      progressElements[id].button.innerText = 'Done'
-      progressElements[id].button.setAttribute('disabled', true)
     }
 
     options.url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)

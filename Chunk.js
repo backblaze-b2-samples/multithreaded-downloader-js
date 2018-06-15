@@ -39,12 +39,16 @@ class Chunk {
       this.monitorReader.read().then(({done, value}) => {
         this.doneLoading = done
 
-        if (!done) {
-          this.loaded += value.byteLength
-          this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
-          pump()
-        } else {
-          this.onFinish({contentLength: this.contentLength, id: this.id})
+        try {
+          if (!done) {
+            this.loaded += value.byteLength
+            this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
+            pump()
+          } else {
+            this.onFinish({contentLength: this.contentLength, id: this.id})
+          }
+        } catch (e) {
+          console.log('caught:', e)
         }
       }).catch(error => {
         if (!this.doneLoading) {
@@ -60,12 +64,12 @@ class Chunk {
   retry () {
     if (this.monitorReader) {
       this.monitorReader.releaseLock()
-      this.monitorReader.cancel()
+      // this.monitorReader.cancel()
     }
 
     if (this.reader) {
       this.reader.releaseLock()
-      this.reader.cancel()
+      // this.reader.cancel()
     }
 
     if (this.response.body) {

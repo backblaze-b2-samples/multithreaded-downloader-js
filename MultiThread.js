@@ -69,8 +69,8 @@ class MultiThread {
         onFinish: this.onChunkFinish,
         onProgress: ({id, contentLength, loaded, byteLength}) => {
           this.loaded += byteLength
-          this.onProgress({contentLength: this.contentLength, finished: this.chunks.finished, loaded: this.loaded})
           this.onChunkProgress({contentLength: contentLength, loaded: loaded, id: id})
+          this.onProgress({contentLength: this.contentLength, started: this.chunks.started, loaded: this.loaded})
         }
       })
 
@@ -126,7 +126,7 @@ class MultiThread {
               this.tryFetch()
             } else {
               this.writer.close()
-              this.onFinish()
+              this.onFinish({contentLength: this.contentLength})
             }
           }
         }).catch(error => {

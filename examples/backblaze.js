@@ -1,15 +1,13 @@
 (() => {
-  const chunkSizeInput = document.getElementById('chunkSize')
   const threadsInput = document.getElementById('threads')
-  const retryDelayInput = document.getElementById('retryDelay')
+  const chunkSizeInput = document.getElementById('chunkSize')
   const retriesInput = document.getElementById('retries')
+  const retryDelayInput = document.getElementById('retryDelay')
   const retryOnInput = document.getElementById('retryOn')
   const fileList = document.getElementById('fileList')
   const downloadButton = document.getElementById('downloadButton')
   const notificationArea = document.getElementById('notificationArea')
-  const mainProgressArea = document.getElementById('mainProgressArea')
   const chunkProgressArea = document.getElementById('chunkProgressArea')
-  const notification = document.createElement('blockquote')
 
   downloadButton.onclick = startDownload
 
@@ -34,7 +32,6 @@
   function downloadFile (options) {
     // Remove any previous children in the DOM from previous downloads
     util.removeAllChildren(notificationArea)
-    util.removeAllChildren(mainProgressArea)
     util.removeAllChildren(chunkProgressArea)
 
     // Change download button into cancel button
@@ -45,27 +42,29 @@
       multiThread.cancel()
     }
 
-    // Main callbacks
+    let total = 0
+    const notification = document.createElement('blockquote')
     options.onStart = ({contentLength, chunks}) => {
-      notification.innerText = `Downloading ${util.bytesToMb(contentLength).toFixed(1)} MB`
       notificationArea.appendChild(notification)
+      total = chunks
     }
 
-    options.onProgress = ({contentLength, loaded, finished}) => {
-      // handle divide-by-zero edge case when Content-Length=0
-      const percent = contentLength ? loaded / contentLength : 1
-      notification.innerText = `Downloading ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%`
-    }
-
-    options.onFinish = () => {
-      notification.innerText = ` Download finished successfully!`
+    options.onFinish = ({contentLength}) => {
+      notification.innerText += '\nFinished successfully!'
       downloadButton.innerText = 'Download'
       downloadButton.onclick = startDownload
     }
 
-    // Individual range callbacks
-    let progressElements = []
+    options.onProgress = ({contentLength, loaded, started}) => {
+      // handle divide-by-zero edge case when Content-Length=0
+      const percent = contentLength ? loaded / contentLength : 1
+      notification.innerText = `Downloading
+        ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%
+        ${started}/${total} chunks
+      `
+    }
 
+    let progressElements = []
     options.onChunkStart = ({contentLength, id}) => {
       if (!progressElements[id] && id !== undefined) {
         const progress = document.createElement('progress')
@@ -90,6 +89,11 @@
       }
     }
 
+    options.onChunkFinish = ({contentLength, id}) => {
+      progressElements[id].button.innerText = 'Done'
+      progressElements[id].button.setAttribute('disabled', true)
+    }
+
     options.onChunkProgress = ({contentLength, loaded, id}) => {
       if (!progressElements[id]) {
         options.onChunkStart({id, contentLength})
@@ -98,11 +102,6 @@
         const percent = contentLength ? loaded / contentLength : 1
         progressElements[id].progress.value = Math.round(percent * 100)
       }
-    }
-
-    options.onChunkFinish = ({contentLength, id}) => {
-      progressElements[id].button.innerText = 'Done'
-      progressElements[id].button.setAttribute('disabled', true)
     }
 
     options.url = new URL(`https://f${options.clusterNum}.backblazeb2.com/file/${options.bucketName}/${options.fileName}`)

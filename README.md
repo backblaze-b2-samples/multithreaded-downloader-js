@@ -2,8 +2,7 @@
 
 A browser based multi-threaded downloader implemented in vanilla JavaScript.
 
--   Sends HTTP HEAD request to get the file info
--   Calculate number of ranges and setup
+-   Sends HTTP HEAD request to get the file info and calculate number of chunks
 -   Sends HTTP GET requests with "Range: bytes=start-end" header for each chunk
 -   Monitor the progress of each response stream
 -   Retry on fail or specific HTTP status codes (like 503 Service Unavailable)
@@ -41,32 +40,51 @@ The B2 bucket must be "Public" and have the following CORS rules applied:
 ```
 
 ## Usage
+
+The MultiThread constructor accepts an object:
 ```
-let options = {
-  threads:    // Number of concurrent request threads
-  rangeSize:  // Size of each range in MB
-  retryDelay: // Delay before another retry attempt in ms
-  retries:    // Number of retry attempts
-  retryOn:    // Comma separated  list of HTTP status codes that trigger a retry
-  headers:    // Request headers to pass-though
-  fileName:   // The final output fileName
-}
+new MultiThread({
+  // The request url
+  url: 'http://some-url/',
 
-// onProgress and onFinish callbacks are optional
-let multiThread = new MultiThread(options, onProgress, onFinish)
+  // Request headers to pass-though
+  headers: {
+    'Authorization': `Bearer ${accessToken}`
+  },
 
-// Mimics global fetch()
-multiThread.fetch(url, init)
+  // The final output fileName
+  fileName: 'some-file.ext',
 
-// Stops everything
-multiThread.cancel()
+  // Number of concurrent request threads
+  threads: 4,
+
+  // Size of each chunk in MB
+  chunkSize: 4,
+
+  // Number of retry attempts
+  retries: 2,
+
+  // Delay before another retry attempt in ms
+  retryDelay: 1000,
+
+  // Comma separated list of HTTP status codes that trigger a retry
+  retryOn: '400,403,408,429,500,503,504'
+})
 ```
 
-The onProgress callback function should accept a single object containing the chunk id, the chunk length in bytes, and the number of bytes loaded so far.
+### Callbacks
+The constructor options can also have onStart, onFinish, & onProgress callbacks for the main download,
+and onChunkStart, onChunkFinish, & onChunkProgress for each chunk.
 ```
-onProgress ({id, contentLength, loaded}) {
-  ...
-}
+// Callbacks for main download
+onStart({contentLength, chunks})
+onFinish({contentLength})
+onProgress({contentLength, loaded, started})
+
+// Callback for each chunk
+onChunkStart({contentLength, id})
+onChunkFinish({contentLength, id})
+onChunkProgress({contentLength, loaded, id})
 ```
 
 ### Goals:
