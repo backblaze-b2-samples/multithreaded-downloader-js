@@ -8,12 +8,15 @@ class MultiThread {
     this.onStart = this.onStart.bind(this) || function () {}
     this.onFinish = this.onFinish.bind(this) || function () {}
     this.onProgress = this.onProgress.bind(this) || function () {}
+    this.onError = this.onError.bind(this) || function () {}
+
     this.headers = new Headers(this.headers)
     this.controller = new AbortController()
     this.url = new URL(this.url)
-    this.refreshTime = 1000
+    this.writer = streamSaver.createWriteStream(this.fileName).getWriter()
     this.writing = false
     this.written = 0
+    this.refreshTime = 1000
     this.loaded = 0
     this.queue = []
 
@@ -24,7 +27,6 @@ class MultiThread {
       signal: this.controller.signal
     }).then(response => {
       this.contentLength = util.getContentLength(response)
-      this.writer = streamSaver.createWriteStream(this.fileName, this.contentLength).getWriter()
       this.chunks = {
         total: Math.ceil(this.contentLength / this.chunkSize),
         started: 0,
@@ -32,33 +34,23 @@ class MultiThread {
       }
 
       this.onStart({contentLength: this.contentLength, chunks: this.chunks.total})
-      this.fetchChunk()
-      this.writeNextChunk()
 
+      this.nextChunk()
+      this.writeNextChunk()
       for (let i = 1; i < this.threads; i++) {
-        this.tryFetch()
+        this.nextChunk()
       }
     })
 
     return this
   }
 
-  tryFetch () {
-    if (this.queue.length < this.threads) {
-      this.fetchChunk()
-    } else {
-      // console.log('waiting for slot in queue')
-      setTimeout(this.tryFetch.bind(this), this.refreshTime)
-    }
-  }
-
-  fetchChunk () {
+  nextChunk () {
     if (this.chunks.started < this.chunks.total) {
       const startByte = this.chunks.started * this.chunkSize
       const endByte = startByte + this.chunkSize - 1
       const id = this.chunks.started++
-
-      let chunk = new Chunk({
+      const chunk = new Chunk({
         id: id,
         url: this.url,
         endByte: endByte,
@@ -67,6 +59,7 @@ class MultiThread {
         controller: this.controller,
         onStart: this.onChunkStart,
         onFinish: this.onChunkFinish,
+        onError: this.onChunkError,
         onProgress: ({id, contentLength, loaded, byteLength}) => {
           this.loaded += byteLength
           this.onChunkProgress({contentLength: contentLength, loaded: loaded, id: id})
@@ -83,18 +76,25 @@ class MultiThread {
     return null
   }
 
+  // Wait for an open slot in queue then get the next chunk.
+  checkQueue () {
+    if (this.queue.length < this.threads) {
+      this.nextChunk()
+    } else {
+      setTimeout(this.checkQueue.bind(this), this.refreshTime)
+    }
+  }
+
   writeNextChunk () {
     let chunk = this.queue.find(item => item.id === this.chunks.finished)
 
     if (chunk) {
-      // Move chunk from queue to this.currentChunk
       this.queue = this.queue.filter(item => item.id !== chunk.id)
       this.currentChunk = chunk
       this.writeStream()
     } else {
-      // console.warn('borked')
-      this.tryFetch()
-      return setTimeout(this.writeNextChunk.bind(this), this.refreshTime)
+      this.checkQueue()
+      setTimeout(this.writeNextChunk.bind(this), this.refreshTime)
     }
   }
 
@@ -116,14 +116,20 @@ class MultiThread {
             this.currentChunk.written += value.byteLength
             this.written += value.byteLength
             this.writer.write(value)
-            pump()
+
+            if (!this.currentChunk.retryRequested) {
+              pump()
+            } else {
+              this.currentChunk.reader.releaseLock()
+              setTimeout(this.writeStream.bind(this), this.refreshTime)
+            }
           } else {
             this.writing = false
             this.chunks.finished++
 
             if (this.chunks.finished < this.chunks.total) {
               this.writeNextChunk()
-              this.tryFetch()
+              this.checkQueue()
             } else {
               this.writer.close()
               this.onFinish({contentLength: this.contentLength})
@@ -131,8 +137,9 @@ class MultiThread {
           }
         }).catch(error => {
           if (!this.currentChunk.doneWriting) {
-            console.error(`Chunk #${this.currentChunk.id} failed: `, error)
+            this.onError({error: error})
             this.currentChunk.retry()
+            setTimeout(this.writeStream.bind(this), this.refreshTime)
           }
         })
       }
@@ -142,8 +149,15 @@ class MultiThread {
   }
 
   retryRangeById (id) {
-    const chunk = this.queue.find(item => item.id === this.chunks.finished)
-    chunk.retry()
+    let chunk = this.queue.find(item => item.id === id)
+
+    if (!chunk && this.currentChunk.id === id) {
+      chunk = this.currentChunk
+    }
+
+    if (chunk) {
+      chunk.retry()
+    }
   }
 
   cancel () {

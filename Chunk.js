@@ -4,6 +4,7 @@ class Chunk {
     this.onStart = this.onStart.bind(this) || function () {}
     this.onFinish = this.onFinish.bind(this) || function () {}
     this.onProgress = this.onProgress.bind(this) || function () {}
+    this.onError = this.onError.bind(this) || function () {}
 
     // Passthrough this.headers to each range request (for Google Drive auth)
     this.headers = new Headers(this.headers)
@@ -16,6 +17,8 @@ class Chunk {
   }
 
   start () {
+    this.onStart({id: this.id})
+
     return util.fetchRetry(this.url, {
       headers: this.headers,
       method: 'GET',
@@ -23,8 +26,8 @@ class Chunk {
       signal: this.controller.signal
     }).then(response => {
       this.response = response
+      this.retryRequested = false
       this.contentLength = util.getContentLength(response)
-      this.onStart({contentLength: this.contentLength, id: this.id})
       this.monitor()
 
       return this
@@ -39,20 +42,21 @@ class Chunk {
       this.monitorReader.read().then(({done, value}) => {
         this.doneLoading = done
 
-        try {
-          if (!done) {
-            this.loaded += value.byteLength
-            this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
+        if (!done) {
+          this.loaded += value.byteLength
+          this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
+
+          if (!this.retryRequested) {
             pump()
           } else {
-            this.onFinish({contentLength: this.contentLength, id: this.id})
+            this.monitorReader.releaseLock()
           }
-        } catch (e) {
-          console.log('caught:', e)
+        } else {
+          this.onFinish({contentLength: this.contentLength, id: this.id})
         }
       }).catch(error => {
         if (!this.doneLoading) {
-          console.error(error)
+          this.onError({error: error, id: this.id})
           this.retry()
         }
       })
@@ -62,22 +66,9 @@ class Chunk {
   }
 
   retry () {
-    if (this.monitorReader) {
-      this.monitorReader.releaseLock()
-      // this.monitorReader.cancel()
-    }
-
-    if (this.reader) {
-      this.reader.releaseLock()
-      // this.reader.cancel()
-    }
-
-    if (this.response.body) {
-      this.response.body.cancel()
-    }
-
-    this.startByte = this.startByte + this.loaded
-    this.headers.set('Range', `bytes=${this.startByte}-${this.endByte}`)
+    this.retryRequested = true
+    // this.startByte = this.startByte + this.loaded
+    this.headers.set('Range', `bytes=${this.startByte + this.loaded}-${this.endByte}`)
     this.start()
   }
 }

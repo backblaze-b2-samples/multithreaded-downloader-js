@@ -10,7 +10,7 @@
   const signinButton = document.getElementById('signin-button')
   const signoutButton = document.getElementById('signout-button')
   const notificationArea = document.getElementById('notificationArea')
-  const chunkProgressArea = document.getElementById('chunkProgressArea')
+  const progressArea = document.getElementById('progressArea')
 
   // On load, called to load the auth2 library and API client library.
   window.handleClientLoad = () => {
@@ -104,23 +104,25 @@
     const accessToken = user.getAuthResponse().access_token
     options.headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
 
-    // Remove any previous children in the DOM from previous downloads
+    // Remove any children in the DOM from previous downloads
     util.removeAllChildren(notificationArea)
-    util.removeAllChildren(chunkProgressArea)
+    util.removeAllChildren(progressArea)
 
     // Change download button into cancel button
     downloadButton.innerText = 'Cancel'
     downloadButton.onclick = () => {
+      multiThread.cancel()
+      // Switch back to download again
       downloadButton.innerText = 'Download'
       downloadButton.onclick = startDownload
-      multiThread.cancel()
     }
 
-    let total = 0
+    let totalChunks = 0
     const notification = document.createElement('blockquote')
+
     options.onStart = ({contentLength, chunks}) => {
       notificationArea.appendChild(notification)
-      total = chunks
+      totalChunks = chunks
     }
 
     options.onFinish = ({contentLength}) => {
@@ -134,39 +136,41 @@
       const percent = contentLength ? loaded / contentLength : 1
       notification.innerText = `Downloading
         ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%
-        ${started}/${total} chunks
-      `
+        ${started}/${totalChunks} chunks`
+    }
+
+    options.onError = ({error}) => {
+      // notification.classList.add('error')
+      console.warn(error)
     }
 
     let progressElements = []
 
-    options.onChunkStart = ({contentLength, id}) => {
-      if (!progressElements[id] && id !== undefined) {
+    options.onChunkStart = ({id}) => {
+      if (id && !progressElements[id]) {
         const progress = document.createElement('progress')
         progress.value = 0
         progress.max = 100
 
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.innerText = `Retry`
-        button.classList.add('retry-button')
-        button.onclick = () => {
-          multiThread.retryRangeById(id)
-        }
+        const info = document.createElement('span')
+        info.classList.add('waiting')
+        info.innerText = id
 
-        chunkProgressArea.appendChild(progress)
-        chunkProgressArea.appendChild(button)
+        const container = document.createElement('div')
+        container.classList.add('container')
+        container.appendChild(progress)
+        container.appendChild(info)
+        progressArea.appendChild(container)
 
-        progressElements[id] = {
-          progress: progress,
-          button: button
-        }
+        progressElements[id] = {container, progress, info}
       }
     }
 
     options.onChunkFinish = ({contentLength, id}) => {
-      progressElements[id].button.innerText = 'Done'
-      progressElements[id].button.setAttribute('disabled', true)
+      progressElements[id].info.classList.remove('error')
+      progressElements[id].info.classList.remove('progress')
+      progressElements[id].info.classList.remove('waiting')
+      progressElements[id].info.classList.add('success')
     }
 
     options.onChunkProgress = ({contentLength, loaded, id}) => {
@@ -176,7 +180,19 @@
         // handle divide-by-zero edge case when Content-Length=0
         const percent = contentLength ? loaded / contentLength : 1
         progressElements[id].progress.value = Math.round(percent * 100)
+        progressElements[id].info.classList.remove('error')
+        progressElements[id].info.classList.remove('success')
+        progressElements[id].info.classList.remove('waiting')
+        progressElements[id].info.classList.add('progress')
       }
+    }
+
+    options.onChunkError = ({error, id}) => {
+      progressElements[id].info.classList.remove('progress')
+      progressElements[id].info.classList.remove('success')
+      progressElements[id].info.classList.remove('waiting')
+      progressElements[id].info.classList.add('error')
+      console.warn(`Chunk ${id}:`, error)
     }
 
     options.url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
