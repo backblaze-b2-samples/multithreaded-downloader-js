@@ -5,159 +5,108 @@ class MultiThread {
     }
 
     Object.assign(this, options)
-    this.onStart = this.onStart.bind(this) || function () {}
-    this.onFinish = this.onFinish.bind(this) || function () {}
-    this.onProgress = this.onProgress.bind(this) || function () {}
-    this.onError = this.onError.bind(this) || function () {}
+    this.onStart = this.onStart ? this.onStart.bind(this) : () => {}
+    this.onFinish = this.onFinish ? this.onFinish.bind(this) : () => {}
+    this.onProgress = this.onProgress ? this.onProgress.bind(this) : () => {}
+    this.onError = this.onError ? this.onError.bind(this) : () => {}
 
+    this.url = new URL(this.url)
     this.headers = new Headers(this.headers)
     this.controller = new AbortController()
-    this.url = new URL(this.url)
-    this.writer = streamSaver.createWriteStream(this.fileName).getWriter()
-    this.writing = false
-    this.written = 0
-    this.refreshTime = 1000
-    this.loaded = 0
-    this.queue = []
+    this.queue = new PromiseQueue({
+      concurrency: this.threads,
+      onFinish: () => {
+        this.concatChunks()
+        this.onFinish()
+      }
+    })
 
-    util.fetchRetry(this.url, {
+    fetch(this.url, {
       method: 'HEAD',
       mode: 'cors',
       headers: this.headers,
       signal: this.controller.signal
     }).then(response => {
       this.contentLength = util.getContentLength(response)
-      this.chunks = {
-        total: Math.ceil(this.contentLength / this.chunkSize),
-        started: 0,
-        finished: 0
-      }
+      this.chunkTotal = Math.ceil(this.contentLength / this.chunkSize)
+      this.onStart({contentLength: this.contentLength, chunks: this.chunkTotal})
+      this.loaded = 0
 
-      this.onStart({contentLength: this.contentLength, chunks: this.chunks.total})
+      this.fileSystem = new FileSystem()
 
-      this.nextChunk()
-      this.writeNextChunk()
-      for (let i = 1; i < this.threads; i++) {
-        this.nextChunk()
+      this.fileSystem.getRoot()
+        .then(dir => dir.readEntries())
+        .then(entries => {
+          console.log(entries)
+          entries.forEach(entry => entry.remove())
+        })
+
+      this.fileSystem.allocate(this.contentLength)
+      this.fileSystem.getStatistics().then(stats => {
+        console.log(this.contentLength, stats)
+      })
+
+      for (let i = 0; i < this.chunkTotal; i++) {
+        const startByte = i * this.chunkSize
+        const endByte = startByte + this.chunkSize - 1
+        const chunk = new Chunk({
+          id: i,
+          url: this.url,
+          endByte: endByte,
+          startByte: startByte,
+          headers: this.headers,
+          controller: this.controller,
+          onStart: this.onChunkStart,
+          onFinish: this.onChunkFinish,
+          onError: this.onChunkError,
+          onProgress: ({id, contentLength, loaded, byteLength}) => {
+            this.loaded += byteLength
+            this.onProgress({contentLength: this.contentLength, loaded: this.loaded})
+            this.onChunkProgress({contentLength: contentLength, loaded: loaded, id: id})
+          }
+        })
+
+        this.queue.add(() => {
+          return new Promise((resolve, reject) => {
+            chunk.start().then(blob => {
+              this.fileSystem.getRoot()
+                .then(dir => dir.makeFileEntry(`${startByte}-${endByte}`))
+                .then(file => file.write(blob))
+                .then(resolve)
+            }).catch(error => {
+              reject(error)
+            })
+          })
+        }, {attempts: this.retries})
       }
     })
 
     return this
   }
 
-  nextChunk () {
-    if (this.chunks.started < this.chunks.total) {
-      const startByte = this.chunks.started * this.chunkSize
-      const endByte = startByte + this.chunkSize - 1
-      const id = this.chunks.started++
-      const chunk = new Chunk({
-        id: id,
-        url: this.url,
-        endByte: endByte,
-        startByte: startByte,
-        headers: this.headers,
-        controller: this.controller,
-        onStart: this.onChunkStart,
-        onFinish: this.onChunkFinish,
-        onError: this.onChunkError,
-        onProgress: ({id, contentLength, loaded, byteLength}) => {
-          this.loaded += byteLength
-          this.onChunkProgress({contentLength: contentLength, loaded: loaded, id: id})
-          this.onProgress({contentLength: this.contentLength, started: this.chunks.started, loaded: this.loaded})
-        }
-      })
+  concatChunks () {
+    this.writer = streamSaver.createWriteStream(this.fileName).getWriter()
 
-      this.queue.push(chunk)
-
-      return chunk.start()
-    }
-
-    // No chunks left
-    return null
-  }
-
-  // Wait for an open slot in queue then get the next chunk.
-  checkQueue () {
-    if (this.queue.length < this.threads) {
-      this.nextChunk()
-    } else {
-      setTimeout(this.checkQueue.bind(this), this.refreshTime)
-    }
-  }
-
-  writeNextChunk () {
-    let chunk = this.queue.find(item => item.id === this.chunks.finished)
-
-    if (chunk) {
-      this.queue = this.queue.filter(item => item.id !== chunk.id)
-      this.currentChunk = chunk
-      this.writeStream()
-    } else {
-      this.checkQueue()
-      setTimeout(this.writeNextChunk.bind(this), this.refreshTime)
-    }
-  }
-
-  writeStream () {
-    if (!this.currentChunk || !this.currentChunk.response) {
-      // Response not ready yet
-      return setTimeout(this.writeStream.bind(this), this.refreshTime)
-    }
-
-    if (!this.currentChunk.response.body.locked) {
-      this.currentChunk.reader = this.currentChunk.response.body.getReader()
-      this.writing = true
-
-      const pump = () => {
-        this.currentChunk.reader.read().then(({done, value}) => {
-          this.currentChunk.doneWriting = done
-
-          if (!done) {
-            this.currentChunk.written += value.byteLength
-            this.written += value.byteLength
-            this.writer.write(value)
-
-            if (!this.currentChunk.retryRequested) {
-              pump()
-            } else {
-              this.currentChunk.reader.releaseLock()
-              setTimeout(this.writeStream.bind(this), this.refreshTime)
-            }
-          } else {
-            this.writing = false
-            this.chunks.finished++
-
-            if (this.chunks.finished < this.chunks.total) {
-              this.writeNextChunk()
-              this.checkQueue()
-            } else {
-              this.writer.close()
-              this.onFinish({contentLength: this.contentLength})
-            }
-          }
-        }).catch(error => {
-          if (!this.currentChunk.doneWriting) {
-            this.onError({error: error})
-            this.currentChunk.retry()
-            setTimeout(this.writeStream.bind(this), this.refreshTime)
-          }
+    this.fileSystem.getRoot()
+      .then(dir => dir.readEntries())
+      .then(entries => {
+        let files = entries.filter(entry => entry.name !== this.fileName).sort((a, b) => {
+          if (a.name < b.name) return -1
+          if (a.name > b.name) return 1
+          return 0
         })
-      }
 
-      pump()
-    }
-  }
+        files.forEach(file => {
+          console.log(file.name)
+          file.getFile().then(file => {
+            file.readAsArrayBuffer(buffer => this.writer.write(buffer))
+          })
 
-  retryRangeById (id) {
-    let chunk = this.queue.find(item => item.id === id)
+          file.remove()
+        })
 
-    if (!chunk && this.currentChunk.id === id) {
-      chunk = this.currentChunk
-    }
-
-    if (chunk) {
-      chunk.retry()
-    }
+        this.writer.close()
+      })
   }
 
   cancel () {

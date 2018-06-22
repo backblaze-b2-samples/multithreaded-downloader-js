@@ -125,29 +125,28 @@
       totalChunks = chunks
     }
 
-    options.onFinish = ({contentLength}) => {
+    options.onFinish = () => {
       notification.innerText += '\nFinished successfully!'
       downloadButton.innerText = 'Download'
       downloadButton.onclick = startDownload
     }
 
-    options.onProgress = ({contentLength, loaded, started}) => {
+    options.onProgress = ({contentLength, loaded}) => {
       // handle divide-by-zero edge case when Content-Length=0
       const percent = contentLength ? loaded / contentLength : 1
-      notification.innerText = `Downloading
-        ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%
-        ${started}/${totalChunks} chunks`
+      notification.innerText = `Downloading ${totalChunks} chunks
+        ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%`
     }
 
     options.onError = ({error}) => {
       // notification.classList.add('error')
-      console.warn(error)
+      console.error(error)
     }
 
     let progressElements = []
 
     options.onChunkStart = ({id}) => {
-      if (id && !progressElements[id]) {
+      if (!progressElements[id]) {
         const progress = document.createElement('progress')
         progress.value = 0
         progress.max = 100
@@ -166,14 +165,14 @@
       }
     }
 
-    options.onChunkFinish = ({contentLength, id}) => {
+    options.onChunkFinish = ({id}) => {
       progressElements[id].info.classList.remove('error')
       progressElements[id].info.classList.remove('progress')
       progressElements[id].info.classList.remove('waiting')
       progressElements[id].info.classList.add('success')
     }
 
-    options.onChunkProgress = ({contentLength, loaded, id}) => {
+    options.onChunkProgress = ({id, contentLength, loaded}) => {
       if (!progressElements[id]) {
         options.onChunkStart({contentLength, id})
       } else {
@@ -187,7 +186,7 @@
       }
     }
 
-    options.onChunkError = ({error, id}) => {
+    options.onChunkError = ({id, error}) => {
       progressElements[id].info.classList.remove('progress')
       progressElements[id].info.classList.remove('success')
       progressElements[id].info.classList.remove('waiting')

@@ -55,11 +55,13 @@
   </main>
 
   <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="../bower_components/StreamSaver.js/StreamSaver.js"></script>
+  <script src="../bower_components/StreamSaver.js/StreamSaver.js"></script>
+  <script src="../bower_components/filesystem.js/filesystem.js"></script>
   <script src="../util.js"></script>
   <script src="../Chunk.js"></script>
+  <script src="../PromiseQueue.js"></script>
   <script src="../MultiThread.js"></script>
-  <script src="googleDrive.js"></script>
+  <script defer src="googleDrive.js"></script>
   <script async defer src="https://apis.google.com/js/api.js"
     onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()">
