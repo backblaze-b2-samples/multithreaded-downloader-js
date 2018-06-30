@@ -10,26 +10,29 @@ class Chunk {
     this.headers = new Headers(this.headers)
     this.headers.set('Range', `bytes=${this.startByte}-${this.endByte}`)
     this.url = new URL(this.url)
+    this.retryRequested = false
     this.done = false
-    this.loaded = 0
     this.written = 0
   }
 
   start () {
     this.onStart({id: this.id})
 
-    return fetch(this.url, {
-      headers: this.headers,
-      method: 'GET',
+    return window.fetch(this.url, {
       mode: 'cors',
+      method: 'GET',
+      headers: this.headers,
       signal: this.controller.signal
-    }).then(response => {
-      this.response = response
-      this.retryRequested = false
-      this.contentLength = util.getContentLength(response)
-      this.monitor()
-      return response.blob()
     })
+      .then(response => {
+        this.response = response
+        this.retryRequested = false
+        this.contentLength = parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
+        this.loaded = 0
+        this.monitor()
+
+        return response
+      })
   }
 
   monitor () {
@@ -37,28 +40,41 @@ class Chunk {
     this.monitorReader = this.response.clone().body.getReader()
 
     const pump = () => {
-      this.monitorReader.read().then(({done, value}) => {
-        this.done = done
-
-        if (!done) {
-          this.loaded += value.byteLength
-          this.onProgress({id: this.id, contentLength: this.contentLength, loaded: this.loaded, byteLength: value.byteLength})
-
-          if (this.retryRequested) {
-            this.monitorReader.releaseLock()
+      this.monitorReader.read()
+        .then(({done, value}) => {
+          this.done = done
+          if (!done) {
+            if (this.retryRequested) {
+              this.monitorReader.releaseLock()
+              this.onProgress({
+                id: this.id,
+                loaded: -this.loaded,
+                byteLength: -this.loaded,
+                contentLength: this.contentLength
+              })
+              this.start()
+            } else {
+              this.loaded += value.byteLength
+              this.onProgress({
+                id: this.id,
+                loaded: this.loaded,
+                byteLength: value.byteLength,
+                contentLength: this.contentLength
+              })
+              pump()
+            }
           } else {
-            pump()
+            this.monitorReader.releaseLock()
+            this.onFinish({id: this.id})
           }
-        } else {
-          this.onFinish({id: this.id})
-        }
-      }).catch(error => {
-        this.onError({error: error, id: this.id})
+        })
+        .catch(error => {
+          this.onError({error: error, id: this.id})
 
-        if (!this.done) {
-          this.retry()
-        }
-      })
+          if (!this.done) {
+            this.retry()
+          }
+        })
     }
 
     pump()
@@ -66,7 +82,14 @@ class Chunk {
 
   retry () {
     this.retryRequested = true
-    // this.headers.set('Range', `bytes=${this.startByte + this.loaded}-${this.endByte}`)
-    this.start()
+    // this.onProgress({
+    //   id: this.id,
+    //   loaded: -this.loaded,
+    //   byteLength: -this.loaded,
+    //   contentLength: this.contentLength
+    // })
+    // this.start()
   }
 }
+
+// module.exports = Chunk

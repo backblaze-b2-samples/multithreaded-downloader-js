@@ -45,7 +45,7 @@ class PromiseQueue {
     const promiseId = this.promises.findIndex(promise => promise.id === id)
     const finishedPromise = this.promises.splice(promiseId, 1)[0]
 
-    if (finishedPromise.onFinish) {
+    if (finishedPromise && finishedPromise.onFinish) {
       finishedPromise.onFinish()
     }
 
@@ -68,7 +68,9 @@ class PromiseQueue {
       return this._promised(fn).catch(retry)
     }
 
-    return retry().then(promise => resolve(promise), error => reject(error)).then(() => this._next(id))
+    return retry()
+      .then(promise => resolve(promise), error => reject(error))
+      .then(() => this._next(id))
   }
 }
 
