@@ -31,13 +31,6 @@ main {
   width: 75vw;
 }
 
-progress {
-  box-shadow: 2px 2px 4px var(--shadow-color);
-  height: 1.25rem;
-  margin: .125rem .125rem 0 0;
-  width: 100%;
-}
-
 section {
   display: flex;
   flex-direction: column;
@@ -49,39 +42,26 @@ select {
   width: 100%;
 }
 
-span {
-  border: 1px solid var(--shadow-color);
-  box-shadow: 2px 2px 4px var(--shadow-color);
-  font-weight: lighter;
-  margin: .125rem .25rem;
-  text-align: center;
-  text-shadow: 1px 1px 0 var(--shadow-color);
-  width: 10%;
-}
-
-.container {
-  display: flex;
-  flex-direction: row;
+.nanobar {
+  background-color: rgba(128, 128, 128, .15);
+  height: .5rem;
+  margin: 1px 0;
 }
 
 .progress {
-  background-color: rgba(0, 255, 0, .25);
-  color: rgba(0, 96, 0, .75);
+  background-color: rgba(0, 192, 0, .5);
 }
 
 .success {
-  background-color: rgba(24, 128, 24, .5);
-  color: rgba(24, 64, 24, .75);
+  background-color: rgba(0, 96, 0, .25);
 }
 
 .waiting {
-  background-color: rgba(255, 255, 128, .5);
-  color: rgba(128, 128, 0, .75);
+  background-color: rgba(224, 192, 0, .5);
 }
 
 .error {
-  background-color: rgba(255, 128, 128, .25);
-  color: rgba(255, 0, 0, .75);
+  background-color: rgba(255, 0, 0, .5);
 }
 
 .github-corner:hover .octo-arm {
