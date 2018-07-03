@@ -1,15 +1,14 @@
 (() => {
-  const threadsInput = document.getElementById('threads')
-  const chunkSizeInput = document.getElementById('chunkSize')
-  const retriesInput = document.getElementById('retries')
-  const fileList = document.getElementById('fileList')
-  const downloadButton = document.getElementById('downloadButton')
   const notificationArea = document.getElementById('notificationArea')
   const progressArea = document.getElementById('progressArea')
-
+  const downloadButton = document.getElementById('downloadButton')
   downloadButton.onclick = startDownload
 
   function startDownload () {
+    const threadsInput = document.getElementById('threads')
+    const chunkSizeInput = document.getElementById('chunkSize')
+    const retriesInput = document.getElementById('retries')
+    const fileList = document.getElementById('fileList')
     const index = fileList.options.selectedIndex
 
     if (index > 0) {
@@ -70,34 +69,46 @@
       }
 
       // handle divide-by-zero edge case when Content-Length=0
-      const percent = contentLength ? loaded / contentLength : 1
+      const percent = contentLength ? Math.round(loaded / contentLength * 100) : 1
 
+      loaded = bytesToMb(loaded).toFixed(1)
+      contentLength = bytesToMb(contentLength).toFixed(1)
       notification.innerText = `Downloading ${totalChunks} chunks
-        ${bytesToMb(loaded).toFixed(1)}/${bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%`
+                                ${loaded}/${contentLength} MB, ${percent}%`
     }
 
     // These are the individual chunk handlers
     options.onChunkStart = ({id}) => {
       if (!progressElements[id]) {
-        progressElements[id] = new Nanobar({target: progressArea})
-        progressElements[id].el.children[0].classList.add('progress')
+        const bg = document.createElement('div')
+        bg.classList.add('progress-background')
+
+        const fill = document.createElement('span')
+        fill.classList.add('progress-fill')
+        fill.style.width = '0%'
+
+        bg.appendChild(fill)
+        progressArea.prepend(bg)
+        progressElements[id] = {bg, fill}
+        progressElements[id].fill.classList.add('downloading')
       } else {
-        progressElements[id].el.children[0].classList.remove('error')
-        progressElements[id].el.children[0].classList.add('waiting')
+        progressElements[id].fill.classList.remove('downloading')
+        progressElements[id].fill.classList.remove('error')
+        progressElements[id].fill.classList.add('warning')
       }
     }
 
     options.onChunkFinish = ({id}) => {
-      progressElements[id].el.children[0].classList.remove('error')
-      progressElements[id].el.children[0].classList.remove('waiting')
-      progressElements[id].el.children[0].classList.remove('progress')
-      progressElements[id].el.children[0].classList.add('success')
+      progressElements[id].fill.classList.remove('error')
+      progressElements[id].fill.classList.remove('warning')
+      progressElements[id].fill.classList.remove('downloading')
+      progressElements[id].fill.classList.add('finished')
     }
 
     options.onChunkError = ({id, error}) => {
-      progressElements[id].el.children[0].classList.remove('waiting')
-      progressElements[id].el.children[0].classList.remove('progress')
-      progressElements[id].el.children[0].classList.add('error')
+      progressElements[id].fill.classList.remove('downloading')
+      progressElements[id].fill.classList.remove('warning')
+      progressElements[id].fill.classList.add('error')
       console.warn(`Chunk ${id}:`, error)
     }
 
@@ -105,14 +116,14 @@
       if (!progressElements[id]) {
         options.onChunkStart({id})
       } else {
-        if (progressElements[id].el.children[0].classList.contains('waiting')) {
-          progressElements[id].el.children[0].classList.remove('waiting')
-          progressElements[id].el.children[0].classList.add('progress')
+        if (progressElements[id].fill.classList.contains('warning')) {
+          progressElements[id].fill.classList.remove('warning')
+          progressElements[id].fill.classList.add('downloading')
         }
 
         // handle divide-by-zero edge case when Content-Length=0
         const percent = contentLength ? loaded / contentLength : 1
-        progressElements[id].go(percent * 99.99)
+        progressElements[id].fill.style.width = `${percent * 100}%`
       }
     }
 

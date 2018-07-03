@@ -2,10 +2,6 @@
   display: none;
 }
 
-:root {
-  --shadow-color: rgba(0, 0, 0, .25)
-}
-
 blockquote {
   background-color: rgba(128, 128, 128, .125);
   border-left: 4px solid rgba(128, 128, 128, .25);
@@ -16,7 +12,7 @@ blockquote {
 }
 
 button {
-  box-shadow: 2px 2px 4px var(--shadow-color);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, .25);
   cursor: pointer;
   width: 33%;
 }
@@ -38,30 +34,36 @@ section {
 }
 
 select {
-  box-shadow: 2px 2px 4px var(--shadow-color);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, .25);
   width: 100%;
 }
 
-.nanobar {
-  background-color: rgba(128, 128, 128, .15);
-  height: .5rem;
-  margin: 1px 0;
+.progress-background {
+  background-color: rgba(128, 128, 128, .125);
+  width: 100%;
 }
 
-.progress {
-  background-color: rgba(0, 192, 0, .5);
+.progress-fill {
+  border-top: 1px dotted rgba(128, 128, 128, .25);
+  display: block;
+  height: 1px;
+  transition: background-color 250ms ease-in-out, width 50ms ease-in-out;
 }
 
-.success {
+.downloading {
+  background-color: rgba(0, 160, 0, .75);
+}
+
+.finished {
   background-color: rgba(0, 96, 0, .25);
 }
 
-.waiting {
-  background-color: rgba(224, 192, 0, .5);
+.warning {
+  background-color: rgba(240, 224, 0, .5);
 }
 
 .error {
-  background-color: rgba(255, 0, 0, .5);
+  background-color: rgba(240, 0, 0, .5);
 }
 
 .github-corner:hover .octo-arm {
