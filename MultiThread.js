@@ -14,6 +14,7 @@ class MultiThread {
     this.controller = new AbortController()
     this.queue = new PromiseQueue({
       concurrency: this.threads,
+      signal: this.controller.signal,
       onFinish: () => this.concatChunks().then(this.onFinish)
     })
 
@@ -82,6 +83,7 @@ class MultiThread {
       }))
       .then(chunks => {
         const chunkQueue = new PromiseQueue({
+          signal: this.controller.signal,
           onFinish: () => this.download(this.outputFile)
         })
 

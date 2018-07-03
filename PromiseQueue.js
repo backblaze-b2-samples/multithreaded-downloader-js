@@ -37,6 +37,10 @@ class PromiseQueue {
   }
 
   _next (id) {
+    if (this.signal.aborted) {
+      return true
+    }
+
     if (this.queue.length > 0) {
       const nextFn = this.queue.shift()
       return this._wrap(nextFn.fn, id, nextFn.resolve, nextFn.reject, nextFn.attempts)
