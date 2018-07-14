@@ -5,9 +5,11 @@ A browser based multi-threaded downloader implemented in vanilla JavaScript.
 -   Sends HTTP HEAD request to get the file info and calculate number of chunks
 -   Sends HTTP GET requests with "Range: bytes=start-end" header for each chunk
 -   Monitor the progress of each response stream
--   Retry on fail or specific HTTP status codes (like 503 Service Unavailable)
--   Concatenates each response stream (in order) into a final output stream
--   Uses [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) to simplify downloading the output stream.
+-   ~~Retry on fail or specific HTTP status codes (like 503 Service Unavailable)~~
+-   ~~Concatenates each response stream (in order) into a final output stream~~
+-   ~~Uses [StreamSaver.js](https://github.com/jimmywarting/StreamSaver.js) to simplify downloading the output stream.~~
+-   Uses [bro-fs](https://github.com/vitalets/bro-fs)(HTML5 Filesystem api) to temporarily save each chunk.
+-   Concatenates all chunks once complete and triggers a[download] with final file.
 -   100% client side JavaScript, no plug-ins or proxy required
 
 This project is under development and still has some bugs.
@@ -56,7 +58,7 @@ new MultiThread({
   fileName: 'some-file.ext',
 
   // Number of concurrent request threads
-  threads: 4,
+  threads: 6,
 
   // Size of each chunk in MB
   chunkSize: 4,
@@ -66,9 +68,6 @@ new MultiThread({
 
   // Delay before another retry attempt in ms
   retryDelay: 1000,
-
-  // Comma separated list of HTTP status codes that trigger a retry
-  retryOn: '400,403,408,429,500,503,504'
 })
 ```
 
@@ -97,10 +96,11 @@ Fetches parts of a file using the HTTP Range header and downloads those pieces i
 -   Optionally, this project will allow us to specify the number of download threads and the size of each request... so we can tune it for specific network conditions, if that is necessary.
 
 #### Dependencies
--   [Web Streams Polyfill](https://github.com/creatorrr/web-streams-polyfill)
--   [StreamSaver](https://github.com/jimmywarting/StreamSaver.js)
+-   ~~[Web Streams Polyfill](https://github.com/creatorrr/web-streams-polyfill)~~
+-   ~~[StreamSaver](https://github.com/jimmywarting/StreamSaver.js)~~
+-   [bro-fs](https://github.com/vitalets/bro-fs)
 
-#### Reference/Other
+#### Reference
 -   [Web Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API)
 -   [Web Streams Spec](https://streams.spec.whatwg.org/)
 -   [Parallel chunk requests in a browser via Service Workers](https://blog.ghaiklor.com/parallel-chunk-requests-in-a-browser-via-service-workers-7be10be2b75f)
