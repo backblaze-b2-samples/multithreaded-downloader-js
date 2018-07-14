@@ -2,10 +2,6 @@
   display: none;
 }
 
-:root {
-  --shadow-color: rgba(0, 0, 0, .25)
-}
-
 blockquote {
   background-color: rgba(128, 128, 128, .125);
   border-left: 4px solid rgba(128, 128, 128, .25);
@@ -16,7 +12,7 @@ blockquote {
 }
 
 button {
-  box-shadow: 2px 2px 4px var(--shadow-color);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, .25);
   cursor: pointer;
   width: 33%;
 }
@@ -31,13 +27,6 @@ main {
   width: 75vw;
 }
 
-progress {
-  box-shadow: 2px 2px 4px var(--shadow-color);
-  height: 1.25rem;
-  margin: .125rem .125rem 0 0;
-  width: 100%;
-}
-
 section {
   display: flex;
   flex-direction: column;
@@ -45,43 +34,36 @@ section {
 }
 
 select {
-  box-shadow: 2px 2px 4px var(--shadow-color);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, .25);
   width: 100%;
 }
 
-span {
-  border: 1px solid var(--shadow-color);
-  box-shadow: 2px 2px 4px var(--shadow-color);
-  font-weight: lighter;
-  margin: .125rem .25rem;
-  text-align: center;
-  text-shadow: 1px 1px 0 var(--shadow-color);
-  width: 10%;
+.progress-background {
+  background-color: rgba(128, 128, 128, .125);
+  width: 100%;
 }
 
-.container {
-  display: flex;
-  flex-direction: row;
+.progress-fill {
+  border-top: 1px dotted rgba(128, 128, 128, .25);
+  display: block;
+  height: 1px;
+  transition: background-color 250ms ease-in-out, width 50ms ease-in-out;
 }
 
-.progress {
-  background-color: rgba(0, 255, 0, .25);
-  color: rgba(0, 96, 0, .75);
+.downloading {
+  background-color: rgba(0, 160, 0, .75);
 }
 
-.success {
-  background-color: rgba(24, 128, 24, .5);
-  color: rgba(24, 64, 24, .75);
+.finished {
+  background-color: rgba(0, 96, 0, .25);
 }
 
-.waiting {
-  background-color: rgba(255, 255, 128, .5);
-  color: rgba(128, 128, 0, .75);
+.warning {
+  background-color: rgba(240, 224, 0, .5);
 }
 
 .error {
-  background-color: rgba(255, 128, 128, .25);
-  color: rgba(255, 0, 0, .75);
+  background-color: rgba(240, 0, 0, .5);
 }
 
 .github-corner:hover .octo-arm {

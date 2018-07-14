@@ -31,14 +31,6 @@
       <input type="number" id="retries" name="retries" value="2">
     </section>
     <section>
-      <label for="retryDelay">Retry delay in ms</label>
-      <input type="number" id="retryDelay" name="retryDelay" value="1000">
-    </section>
-    <section>
-      <label for="retryOn">Retry on HTTP status codes</label>
-      <input type="text" id="retryOn" name="retryOn" value="400,403,408,429,500,503,504">
-    </section>
-    <section>
       <select id="fileList" name="fileList">
         <option>Select a file.</option>
         <option data-cluster-num="000" data-bucket-name="nilayp" value="1GB.txt">nilayp/1GB.txt</option>
@@ -55,10 +47,9 @@
     <div id="progressArea"></div>
   </main>
 
-  <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
-  <script defer src="../bower_components/StreamSaver.js/StreamSaver.js"></script>
-  <script src="../util.js"></script>
+  <script src="../bower_components/bro-fs/bro-fs.min.js"></script>
   <script src="../Chunk.js"></script>
+  <script src="../PromiseQueue.js"></script>
   <script src="../MultiThread.js"></script>
   <script defer src="backblaze.js"></script>
 </body>

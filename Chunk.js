@@ -1,37 +1,38 @@
 class Chunk {
   constructor (options) {
     Object.assign(this, options)
-    this.onStart = this.onStart.bind(this) || function () {}
-    this.onFinish = this.onFinish.bind(this) || function () {}
-    this.onProgress = this.onProgress.bind(this) || function () {}
-    this.onError = this.onError.bind(this) || function () {}
+    this.onStart = this.onStart ? this.onStart.bind(this) : () => {}
+    this.onFinish = this.onFinish ? this.onFinish.bind(this) : () => {}
+    this.onProgress = this.onProgress ? this.onProgress.bind(this) : () => {}
+    this.onError = this.onError ? this.onError.bind(this) : () => {}
 
     // Passthrough this.headers to each range request (for Google Drive auth)
     this.headers = new Headers(this.headers)
     this.headers.set('Range', `bytes=${this.startByte}-${this.endByte}`)
     this.url = new URL(this.url)
-    this.doneLoading = false
-    this.doneWriting = false
-    this.loaded = 0
+    this.retryRequested = false
+    this.done = false
     this.written = 0
   }
 
   start () {
     this.onStart({id: this.id})
 
-    return util.fetchRetry(this.url, {
-      headers: this.headers,
-      method: 'GET',
+    return window.fetch(this.url, {
       mode: 'cors',
+      method: 'GET',
+      headers: this.headers,
       signal: this.controller.signal
-    }).then(response => {
-      this.response = response
-      this.retryRequested = false
-      this.contentLength = util.getContentLength(response)
-      this.monitor()
-
-      return this
     })
+      .then(response => {
+        this.response = response
+        this.retryRequested = false
+        this.contentLength = parseInt(response.headers.get('Content-Length') || response.headers.get('content-length'))
+        this.loaded = 0
+        this.monitor()
+
+        return response
+      })
   }
 
   monitor () {
@@ -39,27 +40,41 @@ class Chunk {
     this.monitorReader = this.response.clone().body.getReader()
 
     const pump = () => {
-      this.monitorReader.read().then(({done, value}) => {
-        this.doneLoading = done
-
-        if (!done) {
-          this.loaded += value.byteLength
-          this.onProgress({contentLength: this.contentLength, byteLength: value.byteLength, loaded: this.loaded, id: this.id})
-
-          if (!this.retryRequested) {
-            pump()
+      this.monitorReader.read()
+        .then(({done, value}) => {
+          this.done = done
+          if (!done) {
+            if (this.retryRequested) {
+              this.monitorReader.releaseLock()
+              this.onProgress({
+                id: this.id,
+                loaded: -this.loaded,
+                byteLength: -this.loaded,
+                contentLength: this.contentLength
+              })
+              this.start()
+            } else {
+              this.loaded += value.byteLength
+              this.onProgress({
+                id: this.id,
+                loaded: this.loaded,
+                byteLength: value.byteLength,
+                contentLength: this.contentLength
+              })
+              pump()
+            }
           } else {
             this.monitorReader.releaseLock()
+            this.onFinish({id: this.id})
           }
-        } else {
-          this.onFinish({contentLength: this.contentLength, id: this.id})
-        }
-      }).catch(error => {
-        if (!this.doneLoading) {
+        })
+        .catch(error => {
           this.onError({error: error, id: this.id})
-          this.retry()
-        }
-      })
+
+          if (!this.done) {
+            this.retry()
+          }
+        })
     }
 
     pump()
@@ -67,8 +82,14 @@ class Chunk {
 
   retry () {
     this.retryRequested = true
-    // this.startByte = this.startByte + this.loaded
-    this.headers.set('Range', `bytes=${this.startByte + this.loaded}-${this.endByte}`)
-    this.start()
+    // this.onProgress({
+    //   id: this.id,
+    //   loaded: -this.loaded,
+    //   byteLength: -this.loaded,
+    //   contentLength: this.contentLength
+    // })
+    // this.start()
   }
 }
+
+// module.exports = Chunk

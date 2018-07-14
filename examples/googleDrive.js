@@ -1,10 +1,5 @@
 (() => {
   const ui = document.getElementById('ui')
-  const chunkSizeInput = document.getElementById('chunkSize')
-  const threadsInput = document.getElementById('threads')
-  const retryDelayInput = document.getElementById('retryDelay')
-  const retriesInput = document.getElementById('retries')
-  const retryOnInput = document.getElementById('retryOn')
   const fileList = document.getElementById('fileList')
   const downloadButton = document.getElementById('downloadButton')
   const signinButton = document.getElementById('signin-button')
@@ -24,21 +19,22 @@
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
         // Authorization scopes required by the API
         scope: 'https://www.googleapis.com/auth/drive'
-      }).then(() => {
-        // Listen for sign-in state changes.
-        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus)
-
-        // Handle the initial sign-in state.
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get())
-
-        signinButton.onclick = () => {
-          gapi.auth2.getAuthInstance().signIn()
-        }
-
-        signoutButton.onclick = () => {
-          gapi.auth2.getAuthInstance().signOut()
-        }
       })
+        .then(() => {
+          // Listen for sign-in state changes.
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus)
+
+          // Handle the initial sign-in state.
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get())
+
+          signinButton.onclick = () => {
+            gapi.auth2.getAuthInstance().signIn()
+          }
+
+          signoutButton.onclick = () => {
+            gapi.auth2.getAuthInstance().signOut()
+          }
+        })
     })
   }
 
@@ -65,35 +61,44 @@
   }
 
   function listFiles () {
-    gapi.client.drive.files.list({fields: 'files(id, name, size)'}).then((response) => {
-      let files = response.result.files
-      if (files && files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-          let file = files[i]
-          if (file.size) {
-            addOption(file.id, `${file.name}`)
+    gapi.client.drive.files.list({fields: 'files(id, name, size)'})
+      .then((response) => {
+        let files = response.result.files
+        if (files && files.length > 0) {
+          for (let i = 0; i < files.length; i++) {
+            let file = files[i]
+            if (file.size) {
+              addOption(file.id, `${file.name}`)
+            }
           }
-        }
 
-        downloadButton.onclick = startDownload
-      } else {
-        addOption(null, 'No files found.')
-      }
-    })
+          downloadButton.onclick = startDownload
+        } else {
+          addOption(null, 'No files found.')
+        }
+      })
   }
 
   function startDownload () {
-    let index = fileList.options.selectedIndex
+    const chunkSizeInput = document.getElementById('chunkSize')
+    const threadsInput = document.getElementById('threads')
+    const retriesInput = document.getElementById('retries')
+    const index = fileList.options.selectedIndex
+
     if (index > 0) {
       const fileID = fileList.options[index].value
       const fileName = fileList.options[index].innerText
       const threads = parseInt(threadsInput.value)
-      const chunkSize = util.mbToBytes(parseInt(chunkSizeInput.value))
+      const chunkSize = parseInt(chunkSizeInput.value) * 1024 * 1024
       const retries = parseInt(retriesInput.value)
-      const retryDelay = parseInt(retryDelayInput.value)
-      const retryOn = retryOnInput.value.split(',').map(code => parseInt(code))
 
-      downloadFile({fileID, threads, chunkSize, retries, retryDelay, retryOn, fileName})
+      downloadFile({fileID, threads, chunkSize, retries, fileName})
+    }
+  }
+
+  function removeAllChildren (element) {
+    while (element.firstChild) {
+      element.removeChild(element.firstChild)
     }
   }
 
@@ -105,8 +110,8 @@
     options.headers = new window.Headers({'Authorization': `Bearer ${accessToken}`})
 
     // Remove any children in the DOM from previous downloads
-    util.removeAllChildren(notificationArea)
-    util.removeAllChildren(progressArea)
+    removeAllChildren(notificationArea)
+    removeAllChildren(progressArea)
 
     // Change download button into cancel button
     downloadButton.innerText = 'Cancel'
@@ -118,84 +123,90 @@
     }
 
     let totalChunks = 0
+    let progressElements = []
     const notification = document.createElement('blockquote')
 
+    // These are the main "thread" handlers
     options.onStart = ({contentLength, chunks}) => {
       notificationArea.appendChild(notification)
       totalChunks = chunks
     }
 
-    options.onFinish = ({contentLength}) => {
+    options.onFinish = () => {
       notification.innerText += '\nFinished successfully!'
       downloadButton.innerText = 'Download'
       downloadButton.onclick = startDownload
     }
 
-    options.onProgress = ({contentLength, loaded, started}) => {
-      // handle divide-by-zero edge case when Content-Length=0
-      const percent = contentLength ? loaded / contentLength : 1
-      notification.innerText = `Downloading
-        ${util.bytesToMb(loaded).toFixed(1)}/${util.bytesToMb(contentLength).toFixed(1)} MB, ${Math.round(percent * 100)}%
-        ${started}/${totalChunks} chunks`
-    }
-
     options.onError = ({error}) => {
-      // notification.classList.add('error')
-      console.warn(error)
+      console.error(error)
     }
 
-    let progressElements = []
+    options.onProgress = ({contentLength, loaded}) => {
+      const bytesToMb = bytes => {
+        return bytes / 1024 / 1024
+      }
 
+      // handle divide-by-zero edge case when Content-Length=0
+      const percent = contentLength ? Math.round(loaded / contentLength * 100) : 1
+
+      loaded = bytesToMb(loaded).toFixed(1)
+      contentLength = bytesToMb(contentLength).toFixed(1)
+      notification.innerText = `Downloading ${totalChunks} chunks
+                                ${loaded}/${contentLength} MB, ${percent}%`
+    }
+
+    // These are the individual chunk handlers
     options.onChunkStart = ({id}) => {
-      if (id && !progressElements[id]) {
-        const progress = document.createElement('progress')
-        progress.value = 0
-        progress.max = 100
-
-        const info = document.createElement('span')
-        info.classList.add('waiting')
-        info.innerText = id
-
-        const container = document.createElement('div')
-        container.classList.add('container')
-        container.appendChild(progress)
-        container.appendChild(info)
-        progressArea.appendChild(container)
-
-        progressElements[id] = {container, progress, info}
-      }
-    }
-
-    options.onChunkFinish = ({contentLength, id}) => {
-      progressElements[id].info.classList.remove('error')
-      progressElements[id].info.classList.remove('progress')
-      progressElements[id].info.classList.remove('waiting')
-      progressElements[id].info.classList.add('success')
-    }
-
-    options.onChunkProgress = ({contentLength, loaded, id}) => {
       if (!progressElements[id]) {
-        options.onChunkStart({contentLength, id})
+        const bg = document.createElement('div')
+        bg.classList.add('progress-background')
+
+        const fill = document.createElement('span')
+        fill.classList.add('progress-fill')
+        fill.style.width = '0%'
+
+        bg.appendChild(fill)
+        progressArea.prepend(bg)
+        progressElements[id] = {bg, fill}
+        progressElements[id].fill.classList.add('downloading')
       } else {
-        // handle divide-by-zero edge case when Content-Length=0
-        const percent = contentLength ? loaded / contentLength : 1
-        progressElements[id].progress.value = Math.round(percent * 100)
-        progressElements[id].info.classList.remove('error')
-        progressElements[id].info.classList.remove('success')
-        progressElements[id].info.classList.remove('waiting')
-        progressElements[id].info.classList.add('progress')
+        progressElements[id].fill.classList.remove('downloading')
+        progressElements[id].fill.classList.remove('error')
+        progressElements[id].fill.classList.add('warning')
       }
     }
 
-    options.onChunkError = ({error, id}) => {
-      progressElements[id].info.classList.remove('progress')
-      progressElements[id].info.classList.remove('success')
-      progressElements[id].info.classList.remove('waiting')
-      progressElements[id].info.classList.add('error')
+    options.onChunkFinish = ({id}) => {
+      progressElements[id].fill.classList.remove('error')
+      progressElements[id].fill.classList.remove('warning')
+      progressElements[id].fill.classList.remove('downloading')
+      progressElements[id].fill.classList.add('finished')
+    }
+
+    options.onChunkError = ({id, error}) => {
+      progressElements[id].fill.classList.remove('downloading')
+      progressElements[id].fill.classList.remove('warning')
+      progressElements[id].fill.classList.add('error')
       console.warn(`Chunk ${id}:`, error)
     }
 
-    options.url = new URL(`https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`)
+    options.onChunkProgress = ({id, contentLength, loaded}) => {
+      if (!progressElements[id]) {
+        options.onChunkStart({contentLength, id})
+      }
+
+      if (progressElements[id].fill.classList.contains('warning')) {
+        progressElements[id].fill.classList.remove('warning')
+        progressElements[id].fill.classList.add('downloading')
+      }
+
+      // handle divide-by-zero edge case when Content-Length=0
+      const percent = contentLength ? loaded / contentLength : 1
+      progressElements[id].fill.style.width = `${percent * 100}%`
+    }
+
+    options.url = `https://www.googleapis.com/drive/v3/files/${options.fileID}?alt=media`
 
     const multiThread = new MultiThread(options)
   }
